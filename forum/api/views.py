@@ -106,27 +106,23 @@ def user_listFollowers(request):
         order = "desc"
 
     cursor = db.cursor()
-    cursor.execute("""SELECT * FROM Users WHERE email = %s; """, (email,))
-    resExec = cursor.fetchall()
 
-    cursor.execute("""SELECT * FROM Users AS t1
+
+
+    cursor.execute("""SELECT t2.email FROM Users AS t1
                           INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
                           INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
-                          WHERE t1.email = %s AND t1.id != t2.id AND t2.id >= ?
+                          WHERE t1.email = %s AND t1.id != t2.id AND t2.id >= {}
                           ORDER BY t2.name {}
-                          LIMIT ?""".format(order), (email, since_id, limit))
+                          LIMIT {}""".format(since_id, order, limit), (email, ))
+
     followers = cursor.fetchall()
 
-    result = [{'about': row[5],
-              'email': row[2],
-              #'followers': followers,
-              #'following': following,
-              'id': row[0],
-              'isAnonymous': row[4],
-              'name': row[3],
-              #'subscriptions': count,
-              'username': row[2]} for row in resExec]
+    result = [user_info(row) for row in followers]
+
     cursor.close()
+
+    return HttpResponse(json.dumps(result), content_type='application/json')
 
 
 
