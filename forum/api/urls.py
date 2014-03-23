@@ -4,13 +4,17 @@ from django.conf.urls import *
 
 urlpatterns = patterns('api.views',
 
- (r'user/create$', 'user_create'),
- (r'user/details$', 'user_details'),
- (r'user/follow$', 'user_follow'),
- (r'user/listFollowers$', 'user_listFollowers'),
- (r'user/listFollowing$', 'user_listFollowing'),
- (r'user/unfollow$', 'user_unfollow'),
- (r'user/updateProfile$', 'user_updateProfile'),
+ (r'user/create$',              'user_create'),
+ (r'user/details$',             'user_details'),
+ (r'user/follow$',              'user_follow'),
+ (r'user/listFollowers$',       'user_listFollowers'),
+ (r'user/listFollowing$',       'user_listFollowing'),
+ (r'user/unfollow$',            'user_unfollow'),
+ (r'user/updateProfile$',       'user_updateProfile'),
+
+ (r'forum/create$',             'forum_create'),
+ (r'forum/details$',            'forum_details'),
+
 
 
  #(r'^news/new/$', 'ask.views.news_new'),

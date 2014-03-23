@@ -164,13 +164,13 @@ def user_unfollow(request):
     return HttpResponse(json.dumps(result), content_type='application/json')
 
 def user_updateProfile(request):
-    #about = request.POST['about']
-    #email = request.POST['user']
-    #name = request.POST['name']
+    about = request.POST['about']
+    email = request.POST['user']
+    name = request.POST['name']
 
-    about = 'test update'
-    email = 'user@mail.ru'
-    name = 'user'
+    #about = 'test update'
+    #email = 'user@mail.ru'
+    #name = 'user'
 
     cursor = db.cursor()
     try:
@@ -186,7 +186,68 @@ def user_updateProfile(request):
     return HttpResponse(json.dumps(result), content_type='application/json')
 
 
+def forum_create(request):
+    #name = request.POST('name')
+    #short_name = request.POST('short_name')
+    #email = request.POST('user')
 
+    name = 'LargeForumName8'
+    short_name = 'ShortName8'
+    email = 'user1@yandex.ru'
+
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (email,))
+    user_id = cursor.fetchall()
+
+    try:
+        cursor.execute("""INSERT INTO Forums (name, short_name, Users_id)
+                          VALUE (%s, %s, %s);""", (name, short_name, user_id))
+        db.commit()
+
+        cursor.execute("""SELECT id FROM Forums WHERE short_name = %s;""", (short_name,))
+        forum_id = cursor.fetchall()
+
+        result = {'id': forum_id,
+              'name': name,
+              'short_name': short_name,
+              'user': email}
+
+    except MySQLdb.Error:
+        db.rollback()
+        print "User not exist"
+        result = {}
+
+    cursor.close()
+    return HttpResponse(json.dumps(result), content_type='application/json')
+
+def forum_details(request):
+    related = request.GET['related']
+    short_name = request.GET['forum']
+
+    cursor = db.cursor()
+    cursor.execute("""SELECT * FROM Forums WHERE short_name = %s;""", (short_name,))
+    forum = cursor.fetchall()
+
+    user_id = forum[0][3]
+
+    cursor.execute("""SELECT email FROM Users WHERE id = %s; """, (user_id,))
+    email = cursor.fetchall()
+
+    if related == "['users']":
+        result = {'id': forum[0][0],
+              'name': forum[0][1],
+              'short_name': forum[0][2],
+              'user': user_info(email)}
+    else:
+        result = {'id': forum[0][0],
+              'name': forum[0][1],
+              'short_name': forum[0][2],
+              'user': email}
+
+
+    cursor.close()
+    return HttpResponse(json.dumps(result), content_type='application/json')
 
 
 
