@@ -8,6 +8,10 @@ urlpatterns = patterns('api.views',
  (r'user/details$', 'user_details'),
  (r'user/follow$', 'user_follow'),
  (r'user/listFollowers$', 'user_listFollowers'),
+ (r'user/listFollowing$', 'user_listFollowing'),
+ (r'user/unfollow$', 'user_unfollow'),
+ (r'user/updateProfile$', 'user_updateProfile'),
+
 
  #(r'^news/new/$', 'ask.views.news_new'),
  #(r'^question/rating/$', 'ask.views.question_popular'),

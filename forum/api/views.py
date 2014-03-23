@@ -96,7 +96,25 @@ def user_follow(request):
     return HttpResponse(json.dumps(result), content_type='application/json')
 
 def user_listFollowers(request):
+    limit = request.GET['limit']
+    order = request.GET['order']
+    since_id = request.GET['since_id']
+    email = request.GET['user']
+    if order is None:
+        order = "desc"
+    cursor = db.cursor()
+    cursor.execute("""SELECT t2.email FROM Users AS t1
+                          INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
+                          INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
+                          WHERE t1.email = %s AND t1.id != t2.id AND t2.id >= {}
+                          ORDER BY t2.name {}
+                          LIMIT {}""".format(since_id, order, limit), (email, ))
+    followers = cursor.fetchall()
+    result = [user_info(row) for row in followers]
+    cursor.close()
+    return HttpResponse(json.dumps(result), content_type='application/json')
 
+def user_listFollowing(request):
     limit = request.GET['limit']
     order = request.GET['order']
     since_id = request.GET['since_id']
@@ -106,23 +124,71 @@ def user_listFollowers(request):
         order = "desc"
 
     cursor = db.cursor()
-
-
-
     cursor.execute("""SELECT t2.email FROM Users AS t1
-                          INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
-                          INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
+                          INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
+                          INNER JOIN Users AS t2 ON t.Users_id = t2.id
                           WHERE t1.email = %s AND t1.id != t2.id AND t2.id >= {}
                           ORDER BY t2.name {}
                           LIMIT {}""".format(since_id, order, limit), (email, ))
 
     followers = cursor.fetchall()
-
     result = [user_info(row) for row in followers]
+    cursor.close()
+    return HttpResponse(json.dumps(result), content_type='application/json')
 
+def user_unfollow(request):
+    follower = request.POST['follower']
+    followee = request.POST['followee']
+    #followee = "email"
+    #follower = "alex@yandex.ru"
+
+    cursor = db.cursor()
+
+    cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (follower,))
+    follower_id = cursor.fetchall()
+
+    cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (followee,))
+    followee_id = cursor.fetchall()
+
+    try:
+        cursor.execute("""delete from Users_has_Users where
+                          users_id = %s and users_id1 = %s""", (followee_id, follower_id))
+        db.commit()
+    except MySQLdb.Error, e:
+        db.rollback()
+        print "No follower"
+
+    result = user_info(follower)
+
+    cursor.close()
+    return HttpResponse(json.dumps(result), content_type='application/json')
+
+def user_updateProfile(request):
+    #about = request.POST['about']
+    #email = request.POST['user']
+    #name = request.POST['name']
+
+    about = 'test update'
+    email = 'user@mail.ru'
+    name = 'user'
+
+    cursor = db.cursor()
+    try:
+        cursor.execute("""UPDATE Users SET name= %s, about = %s WHERE email= %s""", (name, about, email))
+        db.commit()
+    except MySQLdb.Error:
+        db.rollback()
+        print "User not exist"
+
+    result = user_info(email)
     cursor.close()
 
     return HttpResponse(json.dumps(result), content_type='application/json')
+
+
+
+
+
 
 
 
