@@ -14,6 +14,13 @@ urlpatterns = patterns('api.views',
 
  (r'forum/create$',             'forum_create'),
  (r'forum/details$',            'forum_details'),
+ (r'forum/listUsers$',          'forum_listUsers'),
+ (r'forum/listThreads$',        'forum_listThreads'),
+ (r'forum/listPosts$',          'forum_listPosts'),
+
+ (r'thread/create$',            'thread_create'),
+
+ (r'post/create$',              'post_create'),
 
 
 
