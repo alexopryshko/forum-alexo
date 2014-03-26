@@ -80,10 +80,10 @@ def user_details(request):
     return HttpResponse(json.dumps(0), content_type='application/json')
 
 def user_follow(request):
-    follower = request.POST['follower']
-    followee = request.POST['followee']
-    #follower = "user1@yandex.ru"
-    #followee = "alex@yandex.ru"
+    #follower = request.POST['follower']
+    #followee = request.POST['followee']
+    follower = "user2@mail.ru"
+    followee = "user1@mail.ru"
 
     cursor = db.cursor()
 
@@ -145,8 +145,10 @@ def user_listFollowing(request):
     return HttpResponse(json.dumps(result), content_type='application/json')
 
 def user_unfollow(request):
-    follower = request.POST['follower']
-    followee = request.POST['followee']
+    follower = "user2@mail.ru"
+    followee = "user1@mail.ru"
+    #follower = request.POST['follower']
+    #followee = request.POST['followee']
     #followee = "email"
     #follower = "alex@yandex.ru"
 
