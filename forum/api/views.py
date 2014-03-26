@@ -1,241 +1,162 @@
-from django.shortcuts import render
 from django.http import HttpResponse
 import json
-import MySQLdb
-from data_service.user import *
-
+from db_service.forum_db import *
 from django.utils.datastructures import MultiValueDictKeyError
 
-db = MySQLdb.connect(host="localhost", user="AlexO", passwd="pwd", db="tp_project_forum")
+__author__ = 'alexander'
+
+def error():
+    result = {'code': 1, 'message': 'error'}
+    return result
+
+def success(result):
+    answer = {'code': 0, 'response': result}
+    return answer
 
 def user_create(request):
-    if request.method == "POST":
-        try:
-            username = request.POST['username']
-            about = request.POST['about']
-            isAnonymous = request.POST['isAnonymous']
-            name = request.POST['name']
-            email = request.POST['email']
-        except MultiValueDictKeyError:
-            result = {}
-            return HttpResponse(json.dumps(result), content_type='application/json')
-
-        cursor = db.cursor()
-        try:
-            cursor.execute("""INSERT INTO Users (username, email, name, isAnonymous, about)
-                             VALUES (%s, %s, %s, %s, %s);""", (username, email, name, isAnonymous, about))
-        except MySQLdb.Error, e:
-            print "User exist"
-
-        db.commit()
-
-        cursor.execute("""SELECT * FROM Users WHERE email = %s; """, (email,))
-        resExec = cursor.fetchall()
-        result = {'about': resExec[0][5],
-                  'email': resExec[0][2],
-                  'id': resExec[0][0],
-                  'isAnonymous': resExec[0][4],
-                  'name': resExec[0][3],
-                  'username': resExec[0][2]}
-        cursor.close()
-        return HttpResponse(json.dumps(result), content_type='application/json')
-    return HttpResponse(json.dumps(0), content_type='application/json')
+    try:
+        username = request.POST['username']
+        about = request.POST['about']
+        isAnonymous = request.POST['isAnonymous']
+        name = request.POST['name']
+        email = request.POST['email']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if add_user(username, email, name, isAnonymous, about) == False:
+        result = user_table(email)
+        about = result[0][5]
+        email = result[0][2]
+        id = result[0][0]
+        isAnonymous = result[0][4]
+        name = result[0][3]
+        username = result[0][2]
+    else:
+        id = get_user_id_by_email(email)
+    result = {'about': about,
+              'email': email,
+              'id': id,
+              'isAnonymous': isAnonymous,
+              'name': name,
+              'username': username
+    }
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def user_details(request):
-    if request.method == "GET":
-        try:
-            email = request.GET['user']
-        except MultiValueDictKeyError:
-            result = {}
-            return HttpResponse(json.dumps(result), content_type='application/json')
-
-        result = user_info(email)
-        return HttpResponse(json.dumps(result), content_type='application/json')
-    return HttpResponse(json.dumps(0), content_type='application/json')
+    try:
+        email = request.GET['user']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = user_info(email)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def user_follow(request):
-    #follower = request.POST['follower']
-    #followee = request.POST['followee']
-
-    follower = "user1@mail.ru"
-    followee = "user2@mail.ru"
-
-
-    cursor = db.cursor()
-
-    follower_id = getUserIDByEmail(follower)
-    if follower_id is None:
-        return HttpResponse(json.dumps(0), content_type='application/json')
-
-    followee_id = getUserIDByEmail(followee)
-    if followee_id is None:
-        return HttpResponse(json.dumps(0), content_type='application/json')
-
     try:
-        cursor.execute("""INSERT INTO Users_has_Users (Users_id, Users_id1)
-                             VALUES (%s, %s);""", (followee_id, follower_id))
-        db.commit()
-        result = user_info(follower)
-    except MySQLdb.Error, e:
-        db.rollback()
-        result = {}
-
-    return HttpResponse(json.dumps(result), content_type='application/json')
-
-def user_listFollowers(request):
-    limit = request.GET['limit']
-    order = request.GET['order']
-    since_id = request.GET['since_id']
-    email = request.GET['user']
-    if order is None:
-        order = "desc"
-    cursor = db.cursor()
-    cursor.execute("""SELECT t2.email FROM Users AS t1
-                          INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
-                          INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
-                          WHERE t1.email = %s AND t1.id != t2.id AND t2.id >= {}
-                          ORDER BY t2.name {}
-                          LIMIT {}""".format(since_id, order, limit), (email, ))
-    followers = cursor.fetchall()
-    result = [user_info(row) for row in followers]
-    cursor.close()
-    return HttpResponse(json.dumps(result), content_type='application/json')
-
-def user_listFollowing(request):
-    limit = request.GET['limit']
-    order = request.GET['order']
-    since_id = request.GET['since_id']
-    email = request.GET['user']
-
-    if order is None:
-        order = "desc"
-
-    cursor = db.cursor()
-    cursor.execute("""SELECT t2.email FROM Users AS t1
-                          INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
-                          INNER JOIN Users AS t2 ON t.Users_id = t2.id
-                          WHERE t1.email = %s AND t1.id != t2.id AND t2.id >= {}
-                          ORDER BY t2.name {}
-                          LIMIT {}""".format(since_id, order, limit), (email, ))
-
-    followers = cursor.fetchall()
-    result = [user_info(row) for row in followers]
-    cursor.close()
-    return HttpResponse(json.dumps(result), content_type='application/json')
+       follower = request.POST['follower']
+       followee = request.POST['followee']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if follower == followee:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = subscribe(follower, followee)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def user_unfollow(request):
-    #follower = request.POST['follower']
-    #followee = request.POST['followee']
-
-    follower = "user1@mail.ru"
-    followee = "user2@mail.ru"
-
-    cursor = db.cursor()
-
-    follower_id = getUserIDByEmail(follower)
-    if follower_id is None:
-        return HttpResponse(json.dumps(0), content_type='application/json')
-
-    followee_id = getUserIDByEmail(followee)
-    if followee_id is None:
-        return HttpResponse(json.dumps(0), content_type='application/json')
-
     try:
-        cursor.execute("""delete from Users_has_Users where
-                          users_id = %s and users_id1 = %s""", (followee_id, follower_id))
-        db.commit()
-        result = user_info(follower)
-        cursor.close()
-        return HttpResponse(json.dumps(result), content_type='application/json')
-    except MySQLdb.Error:
-        db.rollback()
-        return HttpResponse(json.dumps(0), content_type='application/json')
+       follower = request.POST['follower']
+       followee = request.POST['followee']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if follower == followee:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = unsubscribe(follower, followee)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def user_listFollowers(request):
+    order = request.GET.get('order', 'desc')
+    try:
+        limit = request.GET['limit']
+        since_id = request.GET['since_id']
+        email = request.GET['user']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = list_followers(limit, order, since_id, email)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    answer = [user_info(row) for row in result]
+    return HttpResponse(json.dumps(success(answer)), content_type='application/json')
+
+def user_listFollowing(request):
+    order = request.GET.get('order', 'desc')
+    try:
+        limit = request.GET['limit']
+        since_id = request.GET['since_id']
+        email = request.GET['user']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = list_following(limit, order, since_id, email)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    answer = [user_info(row) for row in result]
+    return HttpResponse(json.dumps(success(answer)), content_type='application/json')
 
 def user_updateProfile(request):
-    about = request.POST['about']
-    email = request.POST['user']
-    name = request.POST['name']
-
-    #about = 'test update'
-    #email = 'user@mail.ru'
-    #name = 'user'
-
-    cursor = db.cursor()
     try:
-        cursor.execute("""UPDATE Users SET name= %s, about = %s WHERE email= %s""", (name, about, email))
-        db.commit()
-    except MySQLdb.Error:
-        db.rollback()
-        print "User not exist"
-
-    result = user_info(email)
-    cursor.close()
-
-    return HttpResponse(json.dumps(result), content_type='application/json')
+        about = request.POST['about']
+        email = request.POST['user']
+        name = request.POST['name']
+    except MultiValueDictKeyError:
+       return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = update(name, about, email)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 
 def forum_create(request):
-    name = request.POST['name']
-    short_name = request.POST['short_name']
-    email = request.POST['user']
-
-    #name = 'LargeForumName8'
-    #short_name = 'ShortName8'
-    #email = 'user1@yandex.ru'
-
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (email,))
-    user_id = cursor.fetchall()
-
     try:
-        cursor.execute("""INSERT INTO Forums (name, short_name, Users_id)
-                          VALUE (%s, %s, %s);""", (name, short_name, user_id))
-        db.commit()
-
-        cursor.execute("""SELECT id FROM Forums WHERE short_name = %s;""", (short_name,))
-        forum_id = cursor.fetchall()
-
-        result = {'id': forum_id,
-              'name': name,
-              'short_name': short_name,
-              'user': email}
-
-    except MySQLdb.Error:
-        db.rollback()
-        print "User not exist"
-        result = {}
-
-    cursor.close()
-    return HttpResponse(json.dumps(result), content_type='application/json')
+        name = request.POST['name']
+        short_name = request.POST['short_name']
+        email = request.POST['user']
+    except MultiValueDictKeyError:
+       return HttpResponse(json.dumps(error()), content_type='application/json')
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if add_forum(name, short_name, user_id) is False:
+        forum = forum_table(short_name)
+        result = {'id':         forum[0][0],
+                  'name':       forum[0][1],
+                  'short_name': forum[0][2],
+                  'user':       get_user_email_by_id(forum[0][3])
+        }
+    else:
+        forum_id = get_forum_id(short_name)
+        result = {'id':         forum_id,
+                  'name':       name,
+                  'short_name': short_name,
+                  'user':       email
+        }
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def forum_details(request):
-    related = request.GET['related']
-    short_name = request.GET['forum']
-
-    cursor = db.cursor()
-    cursor.execute("""SELECT * FROM Forums WHERE short_name = %s;""", (short_name,))
-    forum = cursor.fetchall()
-
-    user_id = forum[0][3]
-
-    cursor.execute("""SELECT email FROM Users WHERE id = %s; """, (user_id,))
-    email = cursor.fetchall()
-
-    if related == "['users']":
-        result = {'id': forum[0][0],
-              'name': forum[0][1],
-              'short_name': forum[0][2],
-              'user': user_info(email)}
-    else:
-        result = {'id': forum[0][0],
-                  'name': forum[0][1],
-                  'short_name': forum[0][2],
-                  'user': email}
-
-
-    cursor.close()
-    return HttpResponse(json.dumps(result), content_type='application/json')
+    related = request.GET.get('related', '[]')
+    try:
+        short_name = request.GET['forum']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    include_user = False
+    if 'user' in related:
+        include_user = True
+    result = forum_info(short_name, include_user)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def forum_listUsers(request):
     order = request.GET.get('order', 'desc')
@@ -244,23 +165,12 @@ def forum_listUsers(request):
         since_id = request.GET['since_id']
         short_name = request.GET['forum']
     except MultiValueDictKeyError:
-        result = {}
-        return HttpResponse(json.dumps(result), content_type='application/json')
-
-    cursor = db.cursor()
-    cursor.execute("""SELECT DISTINCT t4.email FROM Forums AS t1
-                      INNER JOIN Threads AS t2 ON t1.id = t2.Forums_id
-                      INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
-                      INNER JOIN Users AS t4 ON t3.Users_id = t4.id
-                      WHERE t1.short_name = %s AND t4.id > {}
-                      ORDER BY t3.date {}
-                      LIMIT {}""".format(since_id, order, limit), (short_name,))
-    users = cursor.fetchall()
-
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    users = list_users(limit, order, since_id, short_name)
+    if users is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     result = [user_info(user) for user in users]
-    cursor.close()
-
-    return HttpResponse(json.dumps(result), content_type='application/json')
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def getUserEmailByID(user_id):
     cursor = db.cursor()
