@@ -69,7 +69,7 @@ def user_info(email):
     cursor.close()
     return result
 
-def informationAboutUser(user_id, flag):
+def information_about_user(user_id, flag):
     email = get_user_email_by_id(user_id)
     if flag:
         return user_info(email)
@@ -166,9 +166,11 @@ def list_following(limit, order, since_id, email):
 
 def update(name, about, email):
     cursor = db.cursor()
-    result = None
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
+        return None
     try:
-        cursor.execute("""UPDATE Users SET name= %s, about = %s WHERE email= %s""", (name, about, email))
+        cursor.execute("""UPDATE Users SET name= %s, about = %s WHERE id= %s""", (name, about, user_id))
         db.commit()
         result = user_info(email)
     except MySQLdb.Error:

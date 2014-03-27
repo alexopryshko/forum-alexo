@@ -5,6 +5,17 @@ __author__ = 'alexander'
 
 db = get_connect()
 
+def get_short_name(id):
+    cursor = db.cursor()
+    cursor.execute("""SELECT short_name FROM Forums WHERE id = %s;""", (id,))
+    forum = cursor.fetchall()
+    cursor.close()
+    if len(forum) > 0:
+        return forum[0][0]
+    else:
+        return None
+
+
 def get_forum_id(short_name):
     cursor = db.cursor()
     cursor.execute("""SELECT id FROM Forums WHERE short_name = %s;""", (short_name,))
@@ -44,9 +55,9 @@ def forum_info(short_name, deployed):
         return None
     email = get_user_email_by_id(forum[0][3])
     result = {'id':         forum[0][0],
-               'name':       forum[0][1],
-               'short_name': forum[0][2],
-               'user':       {}
+              'name':       forum[0][1],
+              'short_name': forum[0][2],
+              'user':       {}
     }
 
     if deployed is True:
@@ -71,5 +82,32 @@ def list_users(limit, order, since_id, short_name):
     cursor.close()
     return result
 
+def list_thread(limit, order, since_id, short_name):
+    forum_id = get_forum_id(short_name)
+    if forum_id is None:
+        return None
+    cursor = db.cursor()
+    cursor.execute("""SELECT t2.id FROM Threads AS t2
+                      INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
+                      WHERE t1.id = %s AND t2.id > {}
+                      ORDER BY t2.date {}
+                      LIMIT {}""".format(since_id, order, limit), (forum_id,))
+    threads = cursor.fetchall()
+    cursor.close()
+    return threads
 
+def list_post(limit, order, since_id, short_name):
+    forum_id = get_forum_id(short_name)
+    if forum_id is None:
+        return None
+    cursor = db.cursor()
+    cursor.execute("""SELECT t3.id FROM Threads AS t2
+                      INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
+                      INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
+                      WHERE t1.id = %s AND t2.id > {}
+                      ORDER BY t2.date {}
+                      LIMIT {}""".format(since_id, order, limit), (forum_id,))
+    posts = cursor.fetchall()
+    cursor.close()
+    return posts
 

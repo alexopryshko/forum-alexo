@@ -1,6 +1,6 @@
 from django.http import HttpResponse
 import json
-from db_service.forum_db import *
+from db_service.post_db import *
 from django.utils.datastructures import MultiValueDictKeyError
 
 __author__ = 'alexander'
@@ -172,63 +172,6 @@ def forum_listUsers(request):
     result = [user_info(user) for user in users]
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
-def getUserEmailByID(user_id):
-    cursor = db.cursor()
-    cursor.execute("""SELECT email FROM Users WHERE id = %s; """, (user_id,))
-    email = cursor.fetchall()
-    print email
-    cursor.close()
-    return email
-
-def getForumInfByID(forum_id, flag):
-    cursor = db.cursor()
-    cursor.execute("""SELECT * FROM Forums WHERE id = %s;""", (forum_id,))
-    forum = cursor.fetchall()
-
-    if flag:
-        result = {'id': forum[0][0],
-                  'name': forum[0][1],
-                  'short_name': forum[0][2],
-                  'user': getUserEmailByID(forum[0][3])}
-    else:
-        result = forum[0][2]
-    cursor.close()
-    return result
-
-def countPosts(thread_id):
-    cursor = db.cursor()
-    cursor.execute("""SELECT count(*) AS t FROM Posts WHERE Threads_id = {}""".format(thread_id))
-    result = cursor.fetchall()
-    return result[0][0]
-
-def getThreadByID(thread_id, include_user, include_forum, details):
-    if details == False:
-        return thread_id
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT * FROM Threads WHERE id = %s;""", (thread_id,))
-    thread = cursor.fetchall()
-
-    if thread:
-        result = {'date': thread[0][9].strftime('%Y-%m-%d %H:%M:%S'),
-                   'dislikes': thread[0][5],
-                   'forum': getForumInfByID(thread[0][10], include_forum),
-                   'id': thread[0][0],
-                   'isClosed': thread[0][7],
-                   'isDeleted': thread[0][8],
-                   'likes': thread[0][4],
-                   'message': thread[0][2],
-                   'points': thread[0][6],
-                   'posts': countPosts(thread[0][0]),
-                   'slug': thread[0][3],
-                   'title': thread[0][1],
-                   'user': informationAboutUser(thread[0][11], include_user)}
-        return result
-    else:
-        return {}
-
-
-
 def forum_listThreads(request):
     order = request.GET.get('order', 'desc')
     related = request.GET.get('related', '[]')
@@ -237,40 +180,18 @@ def forum_listThreads(request):
         since_id = request.GET['since_id']
         short_name = request.GET['forum']
     except MultiValueDictKeyError:
-        result = {}
-        return HttpResponse(json.dumps(result), content_type='application/json')
-
-    includeUser = False
-    includeForum = False
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    include_user = False
+    include_forum = False
     if 'user' in related:
-        includeUser = True
+        include_user = True
     if 'forum' in related:
-        includeForum = True
-
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT t2.id, t2.title, t2.message, t2.slug, t2.likes, t2.dislikes,
-                             t2.points, t2.isClosed, t2.isDeleted, t2.date, t2.Forums_id, t2.Users_id FROM Threads AS t2
-                      INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
-                      WHERE t1.short_name = %s AND t2.id > {}
-                      ORDER BY t2.date {}
-                      LIMIT {}""".format(since_id, order, limit), (short_name,))
-    threads = cursor.fetchall()
-
-    result = [{'date': thread[9].strftime('%Y-%m-%d %H:%M:%S'),
-               'dislikes': thread[5],
-               'forum': getForumInfByID(thread[10], includeForum),
-               'id': thread[0],
-               'isClosed': thread[7],
-               'isDeleted': thread[8],
-               'likes': thread[4],
-               'message': thread[2],
-               'points': thread[6],
-               'posts': countPosts(thread[0]),
-               'slug': thread[3],
-               'title': thread[1],
-               'user': informationAboutUser(thread[11], includeUser)} for thread in threads]
-    return HttpResponse(json.dumps(result), content_type='application/json')
+        include_forum = True
+    threads = list_thread(limit, order, since_id, short_name)
+    if threads is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = [thread_info(thread, short_name, include_forum, include_user) for thread in threads]
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def forum_listPosts(request):
     order = request.GET.get('order', 'desc')
@@ -280,9 +201,7 @@ def forum_listPosts(request):
         since_id = request.GET['since_id']
         short_name = request.GET['forum']
     except MultiValueDictKeyError:
-        result = {}
-        return HttpResponse(json.dumps(result), content_type='application/json')
-
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     include_user = False
     include_forum = False
     include_thread = False
@@ -292,179 +211,123 @@ def forum_listPosts(request):
         include_forum = True
     if 'thread' in related:
         include_thread = True
-
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT t3.id, t3.message, t3.likes, t3.dislikes,
-                             t3.points, t3.isApproved, t3.isHighlighted, t3.isEdited,
-                             t3.isSpam, t3.isDeleted, t3.date, t3.Threads_id,
-                             t3.Users_id, t3.parent, t1.id FROM Threads AS t2
-                      INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
-                      INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
-                      WHERE t1.short_name = %s AND t2.id > {}
-                      ORDER BY t2.date {}
-                      LIMIT {}""".format(since_id, order, limit), (short_name,))
-    posts = cursor.fetchall()
-
-    result = [{'date': post[10].strftime('%Y-%m-%d %H:%M:%S'),
-               'dislikes': post[3],
-               'forum': getForumInfByID(post[14], include_forum),
-               'id': post[0],
-               'isApproved': post[5],
-               'isDeleted': post[9],
-               'isEdited': post[7],
-               'isHighlighted': post[6],
-               'isSpam': post[8],
-               'likes': post[2],
-               'message': post[1],
-               'parent': post[13],
-               'points': post[4],
-               'thread': getThreadByID(post[11], False, False, include_thread),
-               'user': informationAboutUser(post[12], include_user)} for post in posts]
-
-    return HttpResponse(json.dumps(result), content_type='application/json')
-
-
-
-
+    posts = list_post(limit, order, since_id, short_name)
+    if posts is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = [post_info(post, short_name, include_user, include_forum, include_thread) for post in posts]
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def thread_create(request):
-    isDeleted = request.POST['isDeleted']
-    short_name = request.POST['forum']
-    title = request.POST['title']
-    isClosed = request.POST['isClosed']
-    email = request.POST['user']
-    date = request.POST['date']
-    message = request.POST['message']
-    slug = request.POST['slug']
-
-
-
-    #isDeleted = 0
-    #short_name = 'ShortName1'
-    #title = 'title1'
-    #isClosed = 1
-    #email = 'user1@mail.ru'
-    #date = '2014-01-01 00:00:01'
-    #message = 'message1'
-    #slug = 'slug6'
-
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (email,))
-    user_id = cursor.fetchall()
-
-    cursor.execute("""SELECT id FROM Forums WHERE short_name = %s;""", (short_name,))
-    forum_id = cursor.fetchall()
-
+    is_deleted = request.POST.get('isDeleted', False)
     try:
-        cursor.execute("""INSERT INTO Threads (title, message, slug, likes,
-                          dislikes, points, isClosed, isDeleted,
-                          date, Forums_id, Users_id)
-                          VALUES(%s, %s, %s, 0, 0, 0, %s, %s, %s, %s, %s)""",
-                          (title, message, slug, isClosed, isDeleted, date, forum_id, user_id))
-        db.commit()
+        short_name = request.POST['forum']
+        title = request.POST['title']
+        is_closed = request.POST['isClosed']
+        email = request.POST['user']
+        date = request.POST['date']
+        message = request.POST['message']
+        slug = request.POST['slug']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
 
-        cursor.execute("""SELECT id FROM Threads WHERE slug = %s""", (slug,))
-        thread_id = cursor.fetchall()
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    forum_id = get_forum_id(short_name)
+    if forum_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
 
-        result = {'date': date,
-              'forum': short_name,
-              'id': thread_id[0][0],
-              'isClosed': isClosed,
-              'isDeleted': isDeleted,
-              'message': message,
-              'slug': slug,
-              'title': title,
-              'user': email}
-    except MySQLdb.Error:
-        db.rollback()
-        result = {}
+    if add_thread(title, message, slug, is_closed, is_deleted, date, forum_id, user_id) is True:
+        id = get_thread_id(slug)
+        result = {'date':       date,
+                  'forum':      short_name,
+                  'id':         id,
+                  'isClosed':   is_closed,
+                  'isDeleted':  is_deleted,
+                  'message':    message,
+                  'slug':       slug,
+                  'title':      title,
+                  'user':       email
+        }
+    else:
+        thread = thread_info(id, short_name, False, False)
+        result = {'date':       thread['date'],
+                  'forum':      thread['forum'],
+                  'id':         thread['id'],
+                  'isClosed':   thread['isClosed'],
+                  'isDeleted':  thread['isDeleted'],
+                  'message':    thread['message'],
+                  'slug':       thread['slug'],
+                  'title':      thread['title'],
+                  'user':       thread['user']
+        }
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
-    cursor.close()
-    return HttpResponse(json.dumps(result), content_type='application/json')
+def thread_close(request):
+    try:
+        thread_id = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if mark_as_closed(thread_id) is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
 
+    return HttpResponse(json.dumps(success(thread_id)), content_type='application/json')
+
+def thread_details(request):
+    related = request.GET.get('related', '[]')
+    try:
+        thread_id = request.GET['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+    include_user = False
+    include_forum = False
+    if 'user' in related:
+        include_user = True
+    if 'forum' in related:
+        include_forum = True
+    short_name = forum_thread(thread_id)
+    if short_name is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = thread_info(thread_id, forum_thread(thread_id), include_user, include_forum)
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 
 def post_create(request):
-    if 'parent' in request.POST:
-        parent = request.POST['parent']
-    else:
-        parent = None
-
-    if 'isApproved' in request.POST:
-        isApproved = request.POST['isApproved']
-    else:
-        isApproved = 0;
-
-    if 'isHighlighted' in request.POST:
-        isHighlighted = request.POST['isHighlighted']
-    else:
-        isHighlighted = 0;
-
-    if 'isEdited' in request.POST:
-        isEdited = request.POST['isEdited']
-    else:
-        isEdited = 0;
-
-    if 'isSpam' in request.POST:
-        isSpam = request.POST['isSpam']
-    else:
-        isSpam = 0;
-
-    if 'isDeleted' in request.POST:
-        isDeleted = request.POST['isDeleted']
-    else:
-        isDeleted = 0;
-
-    date = request.POST['date']
-    thread_id = request.POST['thread']
-    message = request.POST['message']
-    email = request.POST['user']
-    short_name = request.POST['forum']
-
-    #date = '2014-02-01 22:00:01'
-    #thread_id = 5
-    #message = 'message7'
-    #email = 'user4@mail.ru'
-    #short_name = 'ShortName4'
-
-    cursor = db.cursor()
-
-    cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (email,))
-    user_id = cursor.fetchall()
+    parent = request.POST.get('parent', None)
+    is_approved = request.POST.get('isApproved', False)
+    is_highlighted = request.POST.get('isHighlighted',False)
+    is_edited = request.POST.get('isEdited',False)
+    is_spam = request.POST.get('isSpam', False)
+    is_deleted = request.POST.get('isDeleted', False)
 
     try:
-        cursor.execute("""INSERT INTO Posts (message, likes, dislikes, points, isApproved,
-                          isHighlighted, isEdited, isSpam, isDeleted, date,
-                          Threads_id, Users_id, parent)
-                          VALUES (%s, 0, 0, 0, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                          (message, isApproved, isHighlighted, isEdited, isSpam,
-                          isDeleted, date, thread_id, user_id, parent))
-        post_id = cursor.execute("""SELECT id FROM Posts""")
-        db.commit()
+        date = request.POST['date']
+        thread_id = request.POST['thread']
+        message = request.POST['message']
+        email = request.POST['user']
+        short_name = request.POST['forum']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
 
-        result = {'date': date,
-                  'forum': short_name,
-                  'id': post_id,
-                  'isApproved': isApproved,
-                  'isDeleted': isDeleted,
-                  'isEdited': isEdited,
-                  'isHighlighted': isHighlighted,
-                  'isSpam': isSpam,
-                  'message': message,
-                  'thread': thread_id,
-                  'user': email}
-
-    except MySQLdb.Error:
-        db.rollback()
-        result = {}
-
-    cursor.close()
-    return HttpResponse(json.dumps(result), content_type='application/json')
-
-
-
-
-
-
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    slug = get_thread_slug(thread_id)
+    if slug is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    post_id = add_post(message, is_approved, is_highlighted, is_edited,
+                       is_spam, is_deleted, date, thread_id, user_id, parent)
+    result = {'date':           date,
+              'forum':          short_name,
+              'id':             post_id,
+              'isApproved':     is_approved,
+              'isDeleted':      is_deleted,
+              'isEdited':       is_edited,
+              'isHighlighted':  is_highlighted,
+              'isSpam':         is_spam,
+              'message':        message,
+              'thread':         thread_id,
+              'user':           email
+    }
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')

@@ -19,20 +19,10 @@ urlpatterns = patterns('api.views',
  (r'forum/listPosts$',          'forum_listPosts'),
 
  (r'thread/create$',            'thread_create'),
+ (r'thread/close$',             'thread_close'),
+ (r'thread/details$',           'thread_details'),
+
 
  (r'post/create$',              'post_create'),
 
-
-
- #(r'^news/new/$', 'ask.views.news_new'),
- #(r'^question/rating/$', 'ask.views.question_popular'),
- #(r'login/$', 'ask.views.login'),
- #(r'logout/$','ask.views.logout'),
- #(r'^tegs/','ask.views.tegs'),
- #(r'^question/([0-9]+)/$', 'ask.views.questionPage'),
- #(r'^question/([0-9]+)/answer/$', 'ask.views.answer'),
- #(r'^question/([0-9]+)/commentq/', 'ask.views.commentq'),
- ##(r'^question/([0-9]+)/commenta/([0-9]+)', 'ask.views.commenta'),
- #(r'^question/like/([0-9]+)','ask.views.likeQ'),
- #(r'^question/dislike/([0-9]+)','ask.views.dislikeQ'),
 )
