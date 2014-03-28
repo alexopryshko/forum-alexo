@@ -15,7 +15,7 @@ def post_table(post_id):
     else:
         return None
 
-def post_info(post_id, short_name, include_user, include_forum, include_thread):
+def post_info(post_id, include_user, include_forum, include_thread):
     post = post_table(post_id)
     if post is None:
         return None
@@ -35,6 +35,7 @@ def post_info(post_id, short_name, include_user, include_forum, include_thread):
               'thread':        {},
               'user':          {},
     }
+    short_name = forum_thread(post[11])
     if include_forum is True:
         result['forum'] = forum_info(short_name, False)
     else:

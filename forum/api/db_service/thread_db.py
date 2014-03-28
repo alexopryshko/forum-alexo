@@ -108,3 +108,130 @@ def mark_as_closed(thread_id):
     cursor.close()
     return result
 
+def mark_as_open(thread_id):
+    cursor = db.cursor()
+    if get_thread_slug(thread_id) is None:
+        return None
+    try:
+        cursor.execute("""UPDATE Threads SET isClosed = FALSE WHERE id = %s""", (thread_id,))
+        db.commit()
+        result = thread_id
+    except MySQLdb.Error:
+        db.rollback()
+    cursor.close()
+    return result
+
+def list_thread_posts(thread_id, since, order, limit):
+    slug = get_thread_slug(thread_id)
+    if slug is None:
+        return None
+    cursor = db.cursor()
+    cursor.execute("""SELECT id FROM Posts
+                      WHERE Threads_id = %s and date > {}
+                      ORDER BY date {}
+                      LIMIT {}""".format(since, order, limit), (thread_id,))
+    posts = cursor.fetchall()
+    return posts
+
+def mark_as_deleted(thread_id):
+    cursor = db.cursor()
+    if get_thread_slug(thread_id) is None:
+        return None
+    try:
+        cursor.execute("""UPDATE Threads SET isDeleted = TRUE WHERE id = %s""", (thread_id,))
+        db.commit()
+        result = thread_id
+    except MySQLdb.Error:
+        db.rollback()
+    cursor.close()
+    return result
+
+def mark_as_restored(thread_id):
+    cursor = db.cursor()
+    if get_thread_slug(thread_id) is None:
+        return None
+    try:
+        cursor.execute("""UPDATE Threads SET isDeleted = FALSE WHERE id = %s""", (thread_id,))
+        db.commit()
+        result = thread_id
+    except MySQLdb.Error:
+        db.rollback()
+    cursor.close()
+    return result
+
+def subscribe_to_thread(thread_id, email):
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
+        return False
+    slug = get_thread_slug(thread_id)
+    if slug is None:
+        return False
+    cursor = db.cursor()
+    try:
+        cursor.execute("""INSERT INTO Users_has_Threads (Users_id, Threads_id) VALUES(%s,%s);""", (user_id, thread_id,))
+        db.commit()
+        result = True
+    except MySQLdb.Error:
+        db.rollback()
+        result = False
+    cursor.close()
+    return result
+
+def unsubscribe_to_thread(thread_id, email):
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
+        return False
+    cursor = db.cursor()
+    cursor.execute("""SELECT * FROM Users_has_Threads WHERE Users_id = %s AND Threads_id = %s;""", (user_id, thread_id,))
+    answer = cursor.fetchall()
+    if len(answer) == 0:
+        return False
+    try:
+        cursor.execute("""DELETE FROM Users_has_Threads WHERE Users_id = %s AND Threads_id = %s;""", (user_id, thread_id,))
+        db.commit()
+        result = True
+    except MySQLdb.Error:
+        db.rollback()
+        result = False
+    cursor.close()
+    return result
+
+def update_thread(thread_id, message, slug):
+    test = get_thread_slug(thread_id)
+    if test is None:
+        return False
+    cursor = db.cursor()
+    try:
+        cursor.execute("""UPDATE Threads SET message = %s, slug = %s WHERE id = %s;""", (message, slug, thread_id,))
+        db.commit()
+        result = True
+    except MySQLdb.Error:
+        db.rollback()
+        result = False
+    cursor.close()
+    return result
+
+def vote_thread(thread_id, like, dislike, points):
+    slug = get_thread_slug(thread_id)
+    if slug is None:
+        return False
+    cursor = db.cursor()
+    try:
+        cursor.execute("""UPDATE Threads SET likes = likes + %s,
+                                             dislikes = dislikes + %s,
+                                             points = points + %s
+                                             WHERE id = %s;""", (like, dislike, points,thread_id,))
+        db.commit()
+        result = True
+    except MySQLdb.Error:
+        db.rollback()
+        result = False
+    cursor.close()
+    return result
+
+
+
+
+
+
+

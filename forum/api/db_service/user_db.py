@@ -177,3 +177,16 @@ def update(name, about, email):
         db.rollback()
     cursor.close()
     return result
+
+def thread_created_by_user(email, since, order, limit):
+    id = get_user_id_by_email(email)
+    if id is None:
+        return None
+    cursor = db.cursor()
+    cursor.execute("""SELECT id FROM Threads
+                      WHERE Users_id = %s and date > {}
+                      ORDER BY date {}
+                      LIMIT {}""".format(since, order, limit), (id, ))
+    threads = cursor.fetchall()
+    cursor.close()
+    return cursor

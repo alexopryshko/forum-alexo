@@ -2,6 +2,7 @@ from django.http import HttpResponse
 import json
 from db_service.post_db import *
 from django.utils.datastructures import MultiValueDictKeyError
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 __author__ = 'alexander'
 
@@ -214,7 +215,7 @@ def forum_listPosts(request):
     posts = list_post(limit, order, since_id, short_name)
     if posts is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
-    result = [post_info(post, short_name, include_user, include_forum, include_thread) for post in posts]
+    result = [post_info(post, include_user, include_forum, include_thread) for post in posts]
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 def thread_create(request):
@@ -291,6 +292,151 @@ def thread_details(request):
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = thread_info(thread_id, forum_thread(thread_id), include_user, include_forum)
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def thread_list(request):
+    order = request.GET.get('order', 'desc')
+    email = request.GET.get('user', None)
+    short_name = request.GET.get('forum', None)
+    try:
+        since = request.GET['since']
+        limit = request.GET['limit']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if email is None:
+        threads = list_thread(limit, order, since, short_name)
+        if threads is None:
+            return HttpResponse(json.dumps(error()), content_type='application/json')
+        result = [thread_info(thread, short_name, False, False) for thread in threads]
+        return HttpResponse(json.dumps(success(result)), content_type='application/json')
+    else:
+        threads = thread_created_by_user(email, since, order, limit)
+        if threads is None:
+            return HttpResponse(json.dumps(error()), content_type='application/json')
+        result = [thread_info(thread, forum_thread(thread), False, False) for thread in threads]
+        return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def thread_listPosts(request):
+    order = request.GET.get('order', 'desc')
+    since = request.GET['since']  # replace this code
+    limit = request.GET['limit']
+    try:
+        thread = request.GET['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+    posts = list_thread_posts(thread, since, order, limit)
+    result = [post_info(post, False, False, False) for post in posts]
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def thread_open(request):
+    try:
+        thread = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    thread_id = mark_as_open(thread)
+    if thread_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = {'thread': thread_id}
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def thread_remove(request):
+    try:
+        thread = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    thread_id = mark_as_deleted(thread)
+    if thread_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = {'thread': thread_id}
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def thread_restore(request):
+    try:
+        thread = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    thread_id = mark_as_restored(thread)
+    if thread_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = {'thread': thread_id}
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+@ensure_csrf_cookie
+def thread_subscribe(request):
+    try:
+        email = request.POST['user']
+        thread_id = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if subscribe_to_thread(thread_id, email) is False:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = {'thread': thread_id, 'user': email}
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+@ensure_csrf_cookie
+def thread_unsubscribe(request):
+    try:
+        email = request.POST['user']
+        thread_id = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if unsubscribe_to_thread(thread_id, email) is False:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = {'thread': thread_id, 'user': email}
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def thread_update(request):
+    try:
+        message = request.POST['message']
+        slug = request.POST['slug']
+        thread_id = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+    if update_thread(thread_id, message, slug) is False:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(thread_info(thread_id, forum_thread(thread_id), False, False))), content_type='application/json')
+
+def thread_vote(request):
+    try:
+        vote = request.POST['vote']
+        thread_id = request.POST['thread']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    like = 0
+    dislike = 0
+    if vote == 1:
+        like = 1
+    else:
+        dislike = 1
+    point = like - dislike
+    if vote_thread(thread_id, like, dislike, point) is False:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(thread_info(thread_id, forum_thread(thread_id), False, False))),
+                        content_type='application/json')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def post_create(request):

@@ -82,21 +82,21 @@ def list_users(limit, order, since_id, short_name):
     cursor.close()
     return result
 
-def list_thread(limit, order, since_id, short_name):
+def list_thread(limit, order, since, short_name):
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
     cursor = db.cursor()
     cursor.execute("""SELECT t2.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
-                      WHERE t1.id = %s AND t2.id > {}
+                      WHERE t1.id = %s AND t2.date > {}
                       ORDER BY t2.date {}
-                      LIMIT {}""".format(since_id, order, limit), (forum_id,))
+                      LIMIT {}""".format(since, order, limit), (forum_id,))
     threads = cursor.fetchall()
     cursor.close()
     return threads
 
-def list_post(limit, order, since_id, short_name):
+def list_post(limit, order, since, short_name):
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
@@ -104,9 +104,9 @@ def list_post(limit, order, since_id, short_name):
     cursor.execute("""SELECT t3.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
                       INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
-                      WHERE t1.id = %s AND t2.id > {}
+                      WHERE t1.id = %s AND t3.date > {}
                       ORDER BY t2.date {}
-                      LIMIT {}""".format(since_id, order, limit), (forum_id,))
+                      LIMIT {}""".format(since, order, limit), (forum_id,))
     posts = cursor.fetchall()
     cursor.close()
     return posts
