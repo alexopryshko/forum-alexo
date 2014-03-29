@@ -416,29 +416,6 @@ def thread_vote(request):
                         content_type='application/json')
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def post_create(request):
     parent = request.POST.get('parent', None)
     is_approved = request.POST.get('isApproved', False)
@@ -477,3 +454,26 @@ def post_create(request):
               'user':           email
     }
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def post_details(request):
+    related = request.GET.get('related', '[]')
+    try:
+        post_id = request.GET['post']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+    include_user = False
+    include_forum = False
+    include_thread = False
+    if 'user' in related:
+        include_user = True
+    if 'forum' in related:
+        include_forum = True
+    if 'thread' in related:
+        include_thread = True
+
+    result = post_info(post_id, include_user, include_forum, include_thread)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+

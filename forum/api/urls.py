@@ -33,5 +33,6 @@ urlpatterns = patterns('api.views',
 
 
  (r'post/create$',              'post_create'),
+ (r'post/details$',             'post_details'),
 
 )
