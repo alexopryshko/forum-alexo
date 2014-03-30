@@ -1,5 +1,6 @@
 from connect import get_connect
 import MySQLdb
+from helper import *
 
 __author__ = 'alexander'
 
@@ -190,3 +191,18 @@ def thread_created_by_user(email, since, order, limit):
     threads = cursor.fetchall()
     cursor.close()
     return cursor
+
+def post_created_by_user(email, since, limit, order):
+    since = since_node("date", since)
+    limit = limit_node(limit)
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
+        return None
+    cursor = db.cursor()
+    cursor.execute("""SELECT id FROM Posts WHERE Users_id = %s {}
+                      ORDER BY date {}
+                      {}""".format(since, order, limit), (user_id,))
+    posts = cursor.fetchall()
+    cursor.close()
+    return posts
+

@@ -15,6 +15,13 @@ def post_table(post_id):
     else:
         return None
 
+def is_exist(post_id):
+    cursor = db.cursor()
+    cursor.execute("""SELECT count(*) FROM Posts WHERE id = %s;""", (post_id,))
+    count = cursor.fetchall()
+    return 1 == count[0][0]
+
+
 def post_info(post_id, include_user, include_forum, include_thread):
     post = post_table(post_id)
     if post is None:
@@ -50,7 +57,7 @@ def post_info(post_id, include_user, include_forum, include_thread):
     if include_thread is True:
         result['thread'] = thread_info(post[11], short_name, False, False)
     else:
-        result['thread'] = get_thread_slug(post[11])
+        result['thread'] = post[11]
     return result
 
 def add_post(message,
@@ -78,5 +85,47 @@ def add_post(message,
     except MySQLdb.Error:
         db.rollback()
         return 0
+
+def mark_flag_is_deleted(post_id, flag):
+    if is_exist(post_id):
+        cursor = db.cursor()
+        try:
+            cursor.execute("""UPDATE Posts SET isDeleted = {} WHERE id = %s""".format(flag), (post_id,))
+            db.commit()
+            return True
+        except MySQLdb.Error:
+            db.rollback()
+            return False
+    else:
+        return False
+
+def update_post(post_id, message):
+    if is_exist(post_id):
+        try:
+            cursor = db.cursor()
+            cursor.execute("""UPDATE Posts SET message = %s WHERE id = %s;""", (message, post_id))
+            db.commit()
+            return True
+        except MySQLdb.Error:
+            db.rollback()
+            return False
+    else:
+        return False
+
+def vote_post(post_id, like, dislike, point):
+    if is_exist(post_id):
+        try:
+            cursor = db.cursor()
+            cursor.execute("""UPDATE Posts SET likes = likes + %s,
+                                             dislikes = dislikes + %s,
+                                             points = points + %s
+                                             WHERE id = %s;""", (like, dislike, point, post_id))
+            db.commit()
+            return True
+        except MySQLdb.Error:
+            db.rollback()
+            return False
+    else:
+        return False
 
 

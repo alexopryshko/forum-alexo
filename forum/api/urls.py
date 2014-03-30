@@ -9,6 +9,7 @@ urlpatterns = patterns('api.views',
  (r'user/follow$',              'user_follow'),
  (r'user/listFollowers$',       'user_listFollowers'),
  (r'user/listFollowing$',       'user_listFollowing'),
+ (r'user/listPosts$',           'user_listPosts'),
  (r'user/unfollow$',            'user_unfollow'),
  (r'user/updateProfile$',       'user_updateProfile'),
 
@@ -34,5 +35,10 @@ urlpatterns = patterns('api.views',
 
  (r'post/create$',              'post_create'),
  (r'post/details$',             'post_details'),
+ (r'post/list$',                'post_lists'),
+ (r'post/remove$',              'post_remove'),
+ (r'post/restore$',             'post_restore'),
+ (r'post/update$',              'post_update'),
+ (r'post/vote$',                'post_vote'),
 
 )

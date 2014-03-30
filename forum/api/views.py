@@ -106,6 +106,21 @@ def user_listFollowing(request):
     answer = [user_info(row) for row in result]
     return HttpResponse(json.dumps(success(answer)), content_type='application/json')
 
+def user_listPosts(request):
+    since = request.GET.get('since', '')
+    limit = request.GET.get('limit', '')
+    order = request.GET.get('order', 'desc')
+    try:
+        email = request.GET['user']
+    except MultiValueDictKeyError:
+       return HttpResponse(json.dumps(error()), content_type='application/json')
+    posts = post_created_by_user(email, since, limit, order)
+    if posts is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = [post_info(post, False, False, False) for post in posts]
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+
 def user_updateProfile(request):
     try:
         about = request.POST['about']
@@ -476,4 +491,80 @@ def post_details(request):
     if result is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def post_lists(request):
+    since = request.GET.get('since', '')
+    limit = request.GET.get('limit', '')
+    order = request.GET.get('order', 'desc')
+
+    short_name = request.GET.get('forum', None)
+    thread_id = request.GET.get('thread', None)
+
+    if short_name == thread_id and thread_id is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if thread_id is None:
+        posts = list_post(limit, order, since, short_name)
+    else:
+        posts = list_thread_posts(thread_id, since, order, limit)
+    if posts is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = [post_info(post, False, False, False) for post in posts]
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+def post_remove(request):
+    try:
+        post_id = request.POST['post']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if mark_flag_is_deleted(post_id, True) is True:
+        result = {'post': post_id}
+        return HttpResponse(json.dumps(success(result)), content_type='application/json')
+    else:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+def post_restore(request):
+    try:
+        post_id = request.POST['post']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    if mark_flag_is_deleted(post_id, False) is True:
+        result = {'post': post_id}
+        return HttpResponse(json.dumps(success(result)), content_type='application/json')
+    else:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+def post_update(request):
+    try:
+        post_id = request.POST['post']
+        message = request.POST['message']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+    if update_post(post_id, message) is True:
+        result = post_info(post_id, False, False, False)
+        return HttpResponse(json.dumps(success(result)), content_type='application/json')
+    else:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+
+def post_vote(request):
+    try:
+        vote = request.POST['vote']
+        post_id = request.POST['post']
+    except MultiValueDictKeyError:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    like = 0
+    dislike = 0
+    if vote == 1:
+        like = 1
+    else:
+        dislike = 1
+    point = like - dislike
+    if vote_post(post_id, like, dislike, point) is False:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
+    result = post_info(post_id, False, False, False)
+    return HttpResponse(json.dumps(success(result)), content_type='application/json')
+
+
+
+
 
