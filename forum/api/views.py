@@ -80,9 +80,9 @@ def user_unfollow(request):
 
 def user_listFollowers(request):
     order = request.GET.get('order', 'desc')
+    limit = request.GET.get('limit', '')
+    since_id = request.GET.get('since_id', 0)
     try:
-        limit = request.GET['limit']
-        since_id = request.GET['since_id']
         email = request.GET['user']
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
@@ -94,9 +94,9 @@ def user_listFollowers(request):
 
 def user_listFollowing(request):
     order = request.GET.get('order', 'desc')
+    limit = request.GET.get('limit', '')
+    since_id = request.GET.get('since_id', 0)
     try:
-        limit = request.GET['limit']
-        since_id = request.GET['since_id']
         email = request.GET['user']
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
@@ -176,9 +176,9 @@ def forum_details(request):
 
 def forum_listUsers(request):
     order = request.GET.get('order', 'desc')
+    limit = request.GET.get('limit', '')
+    since_id = request.GET.get('since_id', 0)
     try:
-        limit = request.GET['limit']
-        since_id = request.GET['since_id']
         short_name = request.GET['forum']
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
@@ -191,9 +191,10 @@ def forum_listUsers(request):
 def forum_listThreads(request):
     order = request.GET.get('order', 'desc')
     related = request.GET.get('related', '[]')
+    limit = request.GET.get('limit', '')
+    since = request.GET.get('since', '')
     try:
-        limit = request.GET['limit']
-        since_id = request.GET['since_id']
+
         short_name = request.GET['forum']
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
@@ -203,7 +204,7 @@ def forum_listThreads(request):
         include_user = True
     if 'forum' in related:
         include_forum = True
-    threads = list_thread(limit, order, since_id, short_name)
+    threads = list_thread(limit, order, since, short_name)
     if threads is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = [thread_info(thread, short_name, include_forum, include_user) for thread in threads]
@@ -212,9 +213,9 @@ def forum_listThreads(request):
 def forum_listPosts(request):
     order = request.GET.get('order', 'desc')
     related = request.GET.get('related', '[]')
+    limit = request.GET.get('limit', '')
+    since = request.GET.get('since', '')
     try:
-        limit = request.GET['limit']
-        since_id = request.GET['since_id']
         short_name = request.GET['forum']
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
@@ -227,7 +228,7 @@ def forum_listPosts(request):
         include_forum = True
     if 'thread' in related:
         include_thread = True
-    posts = list_post(limit, order, since_id, short_name)
+    posts = list_post(limit, order, since, short_name)
     if posts is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = [post_info(post, include_user, include_forum, include_thread) for post in posts]
@@ -312,11 +313,11 @@ def thread_list(request):
     order = request.GET.get('order', 'desc')
     email = request.GET.get('user', None)
     short_name = request.GET.get('forum', None)
-    try:
-        since = request.GET['since']
-        limit = request.GET['limit']
-    except MultiValueDictKeyError:
-        return HttpResponse(json.dumps(error()), content_type='application/json')
+    since = request.GET.get('since', '')
+    limit = request.GET.get('limit', '')
+
+    if email == short_name and email is None:
+        return HttpResponse(json.dumps(success(error())), content_type='application/json')
     if email is None:
         threads = list_thread(limit, order, since, short_name)
         if threads is None:
@@ -332,14 +333,15 @@ def thread_list(request):
 
 def thread_listPosts(request):
     order = request.GET.get('order', 'desc')
-    since = request.GET['since']  # replace this code
-    limit = request.GET['limit']
+    since = request.GET.get('since', '')
+    limit = request.GET.get('limit', '')
     try:
         thread = request.GET['thread']
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
-
     posts = list_thread_posts(thread, since, order, limit)
+    if posts is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     result = [post_info(post, False, False, False) for post in posts]
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 

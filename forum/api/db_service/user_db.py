@@ -50,13 +50,16 @@ def user_info(email):
     if len(followers) > 0:
         followers = followers[0]
 
-    count = cursor.execute("""SELECT t2.email FROM Users AS t1
+    cursor.execute("""SELECT t2.email FROM Users AS t1
                                   INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
                                   INNER JOIN Users AS t2 ON t.Users_id = t2.id
                                   WHERE t1.email = %s AND t1.id != t2.id""", (email,))
     following = cursor.fetchall()
     if len(following) > 0:
         following = following[0]
+
+    cursor.execute("""SELECT count(*) FROM Users_has_Threads WHERE Users_id = %s""", (result[0][0],))
+    count = cursor.fetchall()
 
     result = {'about': result[0][5],
               'email': result[0][2],
@@ -65,7 +68,7 @@ def user_info(email):
               'id': result[0][0],
               'isAnonymous': result[0][4],
               'name': result[0][3],
-              'subscriptions': count,
+              'subscriptions': count[0][0],
               'username': result[0][1]}
     cursor.close()
     return result
@@ -131,36 +134,34 @@ def unsubscribe(follower, followee):
     return user_info(follower)
 
 def list_followers(limit, order, since_id, email):
+    limit = limit_node(limit)
     cursor = db.cursor()
-
-    id = get_user_id_by_email(email)
-    if id is None:
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
         return None
-
     cursor.execute("""SELECT t2.email FROM Users AS t1
                           INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
                           INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
                           WHERE t1.id = %s AND t1.id != t2.id AND t2.id >= {}
                           ORDER BY t2.name {}
-                          LIMIT {}""".format(since_id, order, limit), (id, ))
+                          {}""".format(since_id, order, limit), (user_id, ))
     followers = cursor.fetchall()
     cursor.close()
     return followers
 
 def list_following(limit, order, since_id, email):
+    limit = limit_node(limit)
     cursor = db.cursor()
-
-    id = get_user_id_by_email(email)
-    if id is None:
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
         return None
-
     cursor = db.cursor()
     cursor.execute("""SELECT t2.email FROM Users AS t1
                           INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
                           INNER JOIN Users AS t2 ON t.Users_id = t2.id
                           WHERE t1.id = %s AND t1.id != t2.id AND t2.id >= {}
                           ORDER BY t2.name {}
-                          LIMIT {}""".format(since_id, order, limit), (id, ))
+                          {}""".format(since_id, order, limit), (user_id, ))
     following = cursor.fetchall()
     cursor.close()
     return following
@@ -180,17 +181,19 @@ def update(name, about, email):
     return result
 
 def thread_created_by_user(email, since, order, limit):
-    id = get_user_id_by_email(email)
-    if id is None:
+    since = since_node('date', since)
+    limit = limit_node(limit)
+    user_id = get_user_id_by_email(email)
+    if user_id is None:
         return None
     cursor = db.cursor()
     cursor.execute("""SELECT id FROM Threads
-                      WHERE Users_id = %s and date > {}
+                      WHERE Users_id = %s {}
                       ORDER BY date {}
-                      LIMIT {}""".format(since, order, limit), (id, ))
+                      {}""".format(since, order, limit), (user_id, ))
     threads = cursor.fetchall()
     cursor.close()
-    return cursor
+    return threads
 
 def post_created_by_user(email, since, limit, order):
     since = since_node("date", since)

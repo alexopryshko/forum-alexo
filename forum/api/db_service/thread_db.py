@@ -122,14 +122,16 @@ def mark_as_open(thread_id):
     return result
 
 def list_thread_posts(thread_id, since, order, limit):
+    limit = limit_node(limit)
+    since = since_node('date', since)
     slug = get_thread_slug(thread_id)
     if slug is None:
         return None
     cursor = db.cursor()
     cursor.execute("""SELECT id FROM Posts
-                      WHERE Threads_id = %s and date > {}
+                      WHERE Threads_id = %s {}
                       ORDER BY date {}
-                      LIMIT {}""".format(since, order, limit), (thread_id,))
+                      {}""".format(since, order, limit), (thread_id,))
     posts = cursor.fetchall()
     return posts
 
