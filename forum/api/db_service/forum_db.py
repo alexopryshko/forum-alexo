@@ -72,25 +72,28 @@ def list_users(limit, order, since_id, short_name):
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT DISTINCT t4.email FROM Forums AS t1
                       INNER JOIN Threads AS t2 ON t1.id = t2.Forums_id
                       INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
                       INNER JOIN Users AS t4 ON t3.Users_id = t4.id
                       WHERE t1.id = %s AND t4.id > {}
-                      ORDER BY t3.date {}
+                      ORDER BY t4.id {}
                       {}""".format(since_id, order, limit), (forum_id,))
     result = cursor.fetchall()
     cursor.close()
+    database.close()
     return result
 
 def list_thread(limit, order, since, short_name):
     limit = limit_node(limit)
-    since = since_node('t2.date', since)
+    since = since_node('t2.date', date_handler(since))
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT t2.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
                       WHERE t1.id = %s {}
@@ -98,15 +101,17 @@ def list_thread(limit, order, since, short_name):
                       {}""".format(since, order, limit), (forum_id,))
     threads = cursor.fetchall()
     cursor.close()
+    database.close()
     return threads
 
 def list_post(limit, order, since, short_name):
     limit = limit_node(limit)
-    since = since_node('t3.date', since)
+    since = since_node('t3.date', date_handler(since))
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT t3.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
                       INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
@@ -115,5 +120,6 @@ def list_post(limit, order, since, short_name):
                       {}""".format(since, order, limit), (forum_id,))
     posts = cursor.fetchall()
     cursor.close()
+    database.close()
     return posts
 

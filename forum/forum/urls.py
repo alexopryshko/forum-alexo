@@ -9,5 +9,5 @@ urlpatterns = patterns('',
     # url(r'^blog/', include('blog.urls')),
 
     #url(r'^admin/', include(admin.site.urls)),
-    url(r'db/api/alexo/', include('api.urls')),
+    url(r'alexo/', include('api.urls')),
 )

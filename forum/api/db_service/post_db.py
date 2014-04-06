@@ -4,12 +4,15 @@ __author__ = 'alexander'
 db = get_connect()
 
 def post_table(post_id):
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT id, message, likes, dislikes, points,
                       isApproved, isHighlighted, isEdited, isSpam,
                       isDeleted, date, Threads_id, Users_id, parent
                       FROM Posts WHERE id = %s""", (post_id,))
     post = cursor.fetchall()
+    cursor.close()
+    database.close()
     if len(post) > 0:
         return post[0]
     else:
@@ -90,7 +93,7 @@ def mark_flag_is_deleted(post_id, flag):
     if is_exist(post_id):
         cursor = db.cursor()
         try:
-            cursor.execute("""UPDATE Posts SET isDeleted = {} WHERE id = %s""".format(flag), (post_id,))
+            cursor.execute("""UPDATE Posts SET isDeleted = {}, date = date WHERE id = %s""".format(flag), (post_id,))
             db.commit()
             return True
         except MySQLdb.Error:
@@ -115,15 +118,17 @@ def update_post(post_id, message):
 def vote_post(post_id, like, dislike, point):
     if is_exist(post_id):
         try:
-            cursor = db.cursor()
+            database = get_connect()
+            cursor = database.cursor()
             cursor.execute("""UPDATE Posts SET likes = likes + %s,
                                              dislikes = dislikes + %s,
-                                             points = points + %s
+                                             points = points + %s,
+                                             date = date
                                              WHERE id = %s;""", (like, dislike, point, post_id))
-            db.commit()
+            database.commit()
             return True
         except MySQLdb.Error:
-            db.rollback()
+            database.rollback()
             return False
     else:
         return False

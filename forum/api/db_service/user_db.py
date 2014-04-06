@@ -36,6 +36,18 @@ def user_table(email):
     else:
         return None
 
+def user_subscriptions(user_id):
+    database = get_connect()
+    cursor = database.cursor()
+    cursor.execute("""SELECT Threads_id FROM Users_has_Threads WHERE Users_id = %s""", (user_id,))
+    threads = cursor.fetchall()
+    cursor.close()
+    database.close()
+    result = []
+    for thread in threads:
+        result.append(thread[0])
+    return result
+
 def user_info(email):
     result = user_table(email)
     if result is None:
@@ -58,9 +70,6 @@ def user_info(email):
     if len(following) > 0:
         following = following[0]
 
-    cursor.execute("""SELECT count(*) FROM Users_has_Threads WHERE Users_id = %s""", (result[0][0],))
-    count = cursor.fetchall()
-
     result = {'about': result[0][5],
               'email': result[0][2],
               'followers': followers,
@@ -68,7 +77,7 @@ def user_info(email):
               'id': result[0][0],
               'isAnonymous': result[0][4],
               'name': result[0][3],
-              'subscriptions': count[0][0],
+              'subscriptions': user_subscriptions(result[0][0]),
               'username': result[0][1]}
     cursor.close()
     return result
@@ -181,31 +190,35 @@ def update(name, about, email):
     return result
 
 def thread_created_by_user(email, since, order, limit):
-    since = since_node('date', since)
+    since = since_node('date', date_handler(since))
     limit = limit_node(limit)
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT id FROM Threads
                       WHERE Users_id = %s {}
                       ORDER BY date {}
                       {}""".format(since, order, limit), (user_id, ))
     threads = cursor.fetchall()
     cursor.close()
+    database.close()
     return threads
 
 def post_created_by_user(email, since, limit, order):
-    since = since_node("date", since)
+    since = since_node("date", date_handler(since))
     limit = limit_node(limit)
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT id FROM Posts WHERE Users_id = %s {}
                       ORDER BY date {}
                       {}""".format(since, order, limit), (user_id,))
     posts = cursor.fetchall()
     cursor.close()
+    database.close()
     return posts
 

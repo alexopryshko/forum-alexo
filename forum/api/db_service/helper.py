@@ -10,3 +10,6 @@ def since_node(table, since):
     if since == "":
         return ""
     return " AND " + table + " > " + since
+
+def date_handler(date):
+    return "'" + date + "'"

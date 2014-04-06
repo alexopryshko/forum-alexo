@@ -5,10 +5,12 @@ __author__ = 'alexander'
 db = get_connect()
 
 def thread_table(id):
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT * FROM Threads WHERE id = %s;""", (id,))
     thread = cursor.fetchall()
     cursor.close()
+    database.close()
     if len(thread) > 0:
         return thread
     else:
@@ -44,15 +46,19 @@ def get_thread_id(slug):
         return None
 
 def number_of_posts(thread_id):
-    cursor = db.cursor()
-    cursor.execute("""SELECT count(*) AS t FROM Posts WHERE Threads_id = {}""".format(thread_id))
+    database = get_connect()
+    cursor = database.cursor()
+    cursor.execute("""SELECT id FROM Posts WHERE Threads_id = %s""", (thread_id,))
     result = cursor.fetchall()
-    return result[0][0]
+    cursor.close()
+    database.close()
+    return len(result)
 
-def thread_info(id, short_name, include_forum, include_user):
-    thread = thread_table(id)
+def thread_info(thread_id, short_name, include_forum, include_user):
+    thread = thread_table(thread_id)
     if thread is None:
         return None
+
     result = {'date':           thread[0][9].strftime('%Y-%m-%d %H:%M:%S'),
               'dislikes':       thread[0][5],
               'forum':          {},
@@ -62,7 +68,7 @@ def thread_info(id, short_name, include_forum, include_user):
               'likes':          thread[0][4],
               'message':        thread[0][2],
               'points':         thread[0][6],
-              'posts':          number_of_posts(thread[0][0]),
+              'posts':          number_of_posts(thread_id),
               'slug':           thread[0][3],
               'title':          thread[0][1],
               'user':           {}
@@ -77,6 +83,7 @@ def thread_info(id, short_name, include_forum, include_user):
         result['forum'] = forum_info(short_name, False)
     else:
         result['forum'] = short_name
+
     return result
 
 def add_thread(title, message, slug, is_closed, is_deleted, date, forum_id, user_id):
@@ -121,45 +128,56 @@ def mark_as_open(thread_id):
     cursor.close()
     return result
 
+
+def mark_flag_is_open_in_thread(thread_id, flag):
+    database = get_connect()
+    cursor = database.cursor()
+    if get_thread_slug(thread_id) is None:
+        return None
+    try:
+        cursor.execute("""UPDATE Threads SET isClosed = {}, date=date WHERE id = %s""".format(flag), (thread_id,))
+        database.commit()
+        result = thread_id
+    except MySQLdb.Error:
+        database.rollback()
+    cursor.close()
+    database.close()
+    return result
+
 def list_thread_posts(thread_id, since, order, limit):
     limit = limit_node(limit)
-    since = since_node('date', since)
+    since = since_node('date', date_handler(since))
     slug = get_thread_slug(thread_id)
     if slug is None:
         return None
-    cursor = db.cursor()
+    database = get_connect()
+    cursor = database.cursor()
     cursor.execute("""SELECT id FROM Posts
                       WHERE Threads_id = %s {}
                       ORDER BY date {}
                       {}""".format(since, order, limit), (thread_id,))
     posts = cursor.fetchall()
+    cursor.close()
+    database.close()
     return posts
 
-def mark_as_deleted(thread_id):
-    cursor = db.cursor()
+
+def mark_flag_is_deleted_in_thread(thread_id, flag):
+    database = get_connect()
+    cursor = database.cursor()
     if get_thread_slug(thread_id) is None:
         return None
     try:
-        cursor.execute("""UPDATE Threads SET isDeleted = TRUE WHERE id = %s""", (thread_id,))
-        db.commit()
+        cursor.execute("""UPDATE Threads SET isDeleted = {}, date=date WHERE id = %s""".format(flag), (thread_id,))
+        database.commit()
         result = thread_id
     except MySQLdb.Error:
-        db.rollback()
+        database.rollback()
+        result = None
     cursor.close()
+    database.close()
     return result
 
-def mark_as_restored(thread_id):
-    cursor = db.cursor()
-    if get_thread_slug(thread_id) is None:
-        return None
-    try:
-        cursor.execute("""UPDATE Threads SET isDeleted = FALSE WHERE id = %s""", (thread_id,))
-        db.commit()
-        result = thread_id
-    except MySQLdb.Error:
-        db.rollback()
-    cursor.close()
-    return result
 
 def subscribe_to_thread(thread_id, email):
     user_id = get_user_id_by_email(email)
@@ -204,7 +222,7 @@ def update_thread(thread_id, message, slug):
         return False
     cursor = db.cursor()
     try:
-        cursor.execute("""UPDATE Threads SET message = %s, slug = %s WHERE id = %s;""", (message, slug, thread_id,))
+        cursor.execute("""UPDATE Threads SET message = %s, slug = %s, date=date WHERE id = %s;""", (message, slug, thread_id,))
         db.commit()
         result = True
     except MySQLdb.Error:
@@ -221,7 +239,8 @@ def vote_thread(thread_id, like, dislike, points):
     try:
         cursor.execute("""UPDATE Threads SET likes = likes + %s,
                                              dislikes = dislikes + %s,
-                                             points = points + %s
+                                             points = points + %s,
+                                             date=date
                                              WHERE id = %s;""", (like, dislike, points,thread_id,))
         db.commit()
         result = True
