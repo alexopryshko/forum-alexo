@@ -1,10 +1,9 @@
 from thread_db import *
 __author__ = 'alexander'
 
-#db = get_connect()
 
 def post_table(post_id):
-    #database = get_connect()
+
     cursor = connection.cursor()
     cursor.execute("""SELECT id, message, likes, dislikes, points,
                       isApproved, isHighlighted, isEdited, isSpam,
@@ -12,7 +11,7 @@ def post_table(post_id):
                       FROM Posts WHERE id = %s""", (post_id,))
     post = cursor.fetchall()
     cursor.close()
-    #database.close()
+
     if len(post) > 0:
         return post[0]
     else:
@@ -108,8 +107,8 @@ def mark_flag_is_deleted(post_id, flag):
 
 def update_post(post_id, message):
     if is_exist(post_id):
+        cursor = connection.cursor()
         try:
-            cursor = connection.cursor()
             cursor.execute("""UPDATE Posts SET message = %s WHERE id = %s;""", (message, post_id))
             connection.commit()
             cursor.close()
@@ -123,9 +122,8 @@ def update_post(post_id, message):
 
 def vote_post(post_id, like, dislike, point):
     if is_exist(post_id):
+        cursor = connection.cursor()
         try:
-            #database = get_connect()
-            cursor = connection.cursor()
             cursor.execute("""UPDATE Posts SET likes = likes + %s,
                                              dislikes = dislikes + %s,
                                              points = points + %s,

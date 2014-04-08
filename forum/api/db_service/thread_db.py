@@ -2,15 +2,14 @@ from forum_db import *
 
 __author__ = 'alexander'
 
-#db = get_connect()
 
 def thread_table(id):
-    #database = get_connect()
+
     cursor = connection.cursor()
     cursor.execute("""SELECT * FROM Threads WHERE id = %s;""", (id,))
     thread = cursor.fetchall()
     cursor.close()
-    #database.close()
+
     if len(thread) > 0:
         return thread
     else:
@@ -47,12 +46,12 @@ def get_thread_id(slug):
         return None
 
 def number_of_posts(thread_id):
-    #database = get_connect()
+
     cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Posts WHERE Threads_id = %s""", (thread_id,))
     result = cursor.fetchall()
     cursor.close()
-    #database.close()
+
     return len(result)
 
 def thread_info(thread_id, short_name, include_forum, include_user):
@@ -133,7 +132,7 @@ def mark_as_open(thread_id):
 
 
 def mark_flag_is_open_in_thread(thread_id, flag):
-    #database = get_connect()
+
     cursor = connection.cursor()
     if get_thread_slug(thread_id) is None:
         return None
@@ -145,7 +144,7 @@ def mark_flag_is_open_in_thread(thread_id, flag):
         connection.rollback()
         result = None
     cursor.close()
-    #database.close()
+
     return result
 
 def list_thread_posts(thread_id, since, order, limit):
@@ -154,7 +153,6 @@ def list_thread_posts(thread_id, since, order, limit):
     slug = get_thread_slug(thread_id)
     if slug is None:
         return None
-    #database = get_connect()
     cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Posts
                       WHERE Threads_id = %s {}
@@ -162,12 +160,10 @@ def list_thread_posts(thread_id, since, order, limit):
                       {}""".format(since, order, limit), (thread_id,))
     posts = cursor.fetchall()
     cursor.close()
-    #database.close()
     return posts
 
 
 def mark_flag_is_deleted_in_thread(thread_id, flag):
-    #database = get_connect()
     cursor = connection.cursor()
     if get_thread_slug(thread_id) is None:
         return None
@@ -179,7 +175,6 @@ def mark_flag_is_deleted_in_thread(thread_id, flag):
         connection.rollback()
         result = None
     cursor.close()
-    #database.close()
     return result
 
 

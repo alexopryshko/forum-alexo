@@ -1,15 +1,11 @@
-import MySQLdb
 from helper import *
 from django.db import connection
-from django.db import transaction
 from django.db import IntegrityError
 
 __author__ = 'alexander'
 
-#db = get_connect()
 
 def get_user_email_by_id(user_id):
-    #cursor = db.cursor()
     cursor = connection.cursor()
     cursor.execute("""SELECT email FROM Users WHERE id = %s; """, (user_id,))
     email = cursor.fetchall()
@@ -30,7 +26,6 @@ def get_user_id_by_email(email):
         return None
 
 def user_table(email):
-    #cursor = database.cursor()
     cursor = connection.cursor()
     cursor.execute("""SELECT * FROM Users WHERE email = %s; """, (email,))
     result = cursor.fetchall()
@@ -41,12 +36,10 @@ def user_table(email):
         return None
 
 def user_subscriptions(user_id):
-    #database = get_connect()
     cursor = connection.cursor()
     cursor.execute("""SELECT Threads_id FROM Users_has_Threads WHERE Users_id = %s""", (user_id,))
     threads = cursor.fetchall()
     cursor.close()
-    #database.close()
     result = []
     for thread in threads:
         result.append(thread[0])
@@ -164,7 +157,6 @@ def list_followers(limit, order, since_id, email):
 
 def list_following(limit, order, since_id, email):
     limit = limit_node(limit)
-    #cursor = database.cursor()
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
@@ -190,6 +182,7 @@ def update(name, about, email):
         result = user_info(email)
     except IntegrityError:
         connection.rollback()
+        result = None
     cursor.close()
     return result
 
@@ -199,7 +192,6 @@ def thread_created_by_user(email, since, order, limit):
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    #database = get_connect()
     cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Threads
                       WHERE Users_id = %s {}
@@ -207,7 +199,6 @@ def thread_created_by_user(email, since, order, limit):
                       {}""".format(since, order, limit), (user_id, ))
     threads = cursor.fetchall()
     cursor.close()
-    #database.close()
     return threads
 
 def post_created_by_user(email, since, limit, order):
@@ -216,13 +207,12 @@ def post_created_by_user(email, since, limit, order):
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    #database = get_connect()
+
     cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Posts WHERE Users_id = %s {}
                       ORDER BY date {}
                       {}""".format(since, order, limit), (user_id,))
     posts = cursor.fetchall()
     cursor.close()
-    #database.close()
     return posts
 

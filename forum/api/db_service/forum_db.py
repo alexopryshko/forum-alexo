@@ -1,9 +1,7 @@
 from user_db import *
-import MySQLdb
 
 __author__ = 'alexander'
 
-#db = get_connect()
 
 def get_short_name(id):
     cursor = connection.cursor()
@@ -72,7 +70,7 @@ def list_users(limit, order, since_id, short_name):
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
-    #database = get_connect()
+
     cursor = connection.cursor()
     cursor.execute("""SELECT DISTINCT t4.email FROM Forums AS t1
                       INNER JOIN Threads AS t2 ON t1.id = t2.Forums_id
@@ -83,7 +81,7 @@ def list_users(limit, order, since_id, short_name):
                       {}""".format(since_id, order, limit), (forum_id,))
     result = cursor.fetchall()
     cursor.close()
-    #database.close()
+
     return result
 
 def list_thread(limit, order, since, short_name):
@@ -92,7 +90,7 @@ def list_thread(limit, order, since, short_name):
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
-    #database = get_connect()
+
     cursor = connection.cursor()
     cursor.execute("""SELECT t2.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
@@ -101,7 +99,7 @@ def list_thread(limit, order, since, short_name):
                       {}""".format(since, order, limit), (forum_id,))
     threads = cursor.fetchall()
     cursor.close()
-    #database.close()
+
     return threads
 
 def list_post(limit, order, since, short_name):
@@ -110,7 +108,7 @@ def list_post(limit, order, since, short_name):
     forum_id = get_forum_id(short_name)
     if forum_id is None:
         return None
-    #database = get_connect()
+
     cursor = connection.cursor()
     cursor.execute("""SELECT t3.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
@@ -120,6 +118,6 @@ def list_post(limit, order, since, short_name):
                       {}""".format(since, order, limit), (forum_id,))
     posts = cursor.fetchall()
     cursor.close()
-    #database.close()
+
     return posts
 
