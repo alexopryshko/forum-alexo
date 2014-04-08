@@ -1,13 +1,15 @@
 from connect import get_connect
 import MySQLdb
 from helper import *
+from forum.settings import database
 
 __author__ = 'alexander'
 
-db = get_connect()
+#db = get_connect()
 
 def get_user_email_by_id(user_id):
-    cursor = db.cursor()
+    #cursor = db.cursor()
+    cursor = database.cursor()
     cursor.execute("""SELECT email FROM Users WHERE id = %s; """, (user_id,))
     email = cursor.fetchall()
     cursor.close()
@@ -17,7 +19,7 @@ def get_user_email_by_id(user_id):
         return None
 
 def get_user_id_by_email(email):
-    cursor = db.cursor()
+    cursor = database.cursor()
     cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (email,))
     id = cursor.fetchall()
     cursor.close()
@@ -27,7 +29,7 @@ def get_user_id_by_email(email):
         return None
 
 def user_table(email):
-    cursor = db.cursor()
+    cursor = database.cursor()
     cursor.execute("""SELECT * FROM Users WHERE email = %s; """, (email,))
     result = cursor.fetchall()
     cursor.close()
@@ -37,12 +39,12 @@ def user_table(email):
         return None
 
 def user_subscriptions(user_id):
-    database = get_connect()
+    #database = get_connect()
     cursor = database.cursor()
     cursor.execute("""SELECT Threads_id FROM Users_has_Threads WHERE Users_id = %s""", (user_id,))
     threads = cursor.fetchall()
     cursor.close()
-    database.close()
+    #database.close()
     result = []
     for thread in threads:
         result.append(thread[0])
@@ -53,7 +55,7 @@ def user_info(email):
     if result is None:
         return None
 
-    cursor = db.cursor()
+    cursor = database.cursor()
     cursor.execute("""SELECT t2.email FROM Users AS t1
                           INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
                           INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
@@ -90,15 +92,15 @@ def information_about_user(user_id, flag):
         return email
 
 def add_user(username, email, name, isAnonymous, about):
-    cursor = db.cursor()
+    cursor = database.cursor()
     try:
         cursor.execute("""INSERT INTO Users (username, email, name, isAnonymous, about)
                           VALUES (%s, %s, %s, %s, %s);""", (username, email, name, isAnonymous, about))
-        db.commit()
+        database.commit()
         cursor.close()
         return True
     except MySQLdb.Error:
-        db.rollback()
+        database.rollback()
         cursor.close()
         return False
 
@@ -112,13 +114,13 @@ def subscribe(follower, followee):
     if followee_id is None:
         return None
 
-    cursor = db.cursor()
+    cursor = database.cursor()
     try:
         cursor.execute("""INSERT INTO Users_has_Users (Users_id, Users_id1)
                              VALUES (%s, %s);""", (followee_id, follower_id))
-        db.commit()
+        database.commit()
     except MySQLdb.Error:
-        db.rollback()
+        database.rollback()
 
     cursor.close()
     return user_info(follower)
@@ -131,20 +133,20 @@ def unsubscribe(follower, followee):
     followee_id = get_user_id_by_email(followee)
     if followee_id is None:
         return None
-    cursor = db.cursor()
+    cursor = database.cursor()
     try:
         cursor.execute("""DELETE FROM Users_has_Users WHERE
                           users_id = %s AND users_id1 = %s""", (followee_id, follower_id))
-        db.commit()
+        database.commit()
     except MySQLdb.Error:
-        db.rollback()
+        database.rollback()
 
     cursor.close()
     return user_info(follower)
 
 def list_followers(limit, order, since_id, email):
     limit = limit_node(limit)
-    cursor = db.cursor()
+    cursor = database.cursor()
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
@@ -160,11 +162,11 @@ def list_followers(limit, order, since_id, email):
 
 def list_following(limit, order, since_id, email):
     limit = limit_node(limit)
-    cursor = db.cursor()
+    #cursor = database.cursor()
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    cursor = db.cursor()
+    cursor = database.cursor()
     cursor.execute("""SELECT t2.email FROM Users AS t1
                           INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
                           INNER JOIN Users AS t2 ON t.Users_id = t2.id
@@ -176,16 +178,16 @@ def list_following(limit, order, since_id, email):
     return following
 
 def update(name, about, email):
-    cursor = db.cursor()
+    cursor = database.cursor()
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
     try:
         cursor.execute("""UPDATE Users SET name= %s, about = %s WHERE id= %s""", (name, about, user_id))
-        db.commit()
+        database.commit()
         result = user_info(email)
     except MySQLdb.Error:
-        db.rollback()
+        database.rollback()
     cursor.close()
     return result
 
@@ -195,7 +197,7 @@ def thread_created_by_user(email, since, order, limit):
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    database = get_connect()
+    #database = get_connect()
     cursor = database.cursor()
     cursor.execute("""SELECT id FROM Threads
                       WHERE Users_id = %s {}
@@ -203,7 +205,7 @@ def thread_created_by_user(email, since, order, limit):
                       {}""".format(since, order, limit), (user_id, ))
     threads = cursor.fetchall()
     cursor.close()
-    database.close()
+    #database.close()
     return threads
 
 def post_created_by_user(email, since, limit, order):
@@ -212,13 +214,13 @@ def post_created_by_user(email, since, limit, order):
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    database = get_connect()
+    #database = get_connect()
     cursor = database.cursor()
     cursor.execute("""SELECT id FROM Posts WHERE Users_id = %s {}
                       ORDER BY date {}
                       {}""".format(since, order, limit), (user_id,))
     posts = cursor.fetchall()
     cursor.close()
-    database.close()
+    #database.close()
     return posts
 
