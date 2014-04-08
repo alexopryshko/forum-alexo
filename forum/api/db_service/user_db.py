@@ -1,7 +1,8 @@
-from connect import get_connect
 import MySQLdb
 from helper import *
-from forum.settings import database
+from django.db import connection
+from django.db import transaction
+from django.db import IntegrityError
 
 __author__ = 'alexander'
 
@@ -9,7 +10,7 @@ __author__ = 'alexander'
 
 def get_user_email_by_id(user_id):
     #cursor = db.cursor()
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT email FROM Users WHERE id = %s; """, (user_id,))
     email = cursor.fetchall()
     cursor.close()
@@ -19,7 +20,7 @@ def get_user_email_by_id(user_id):
         return None
 
 def get_user_id_by_email(email):
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (email,))
     id = cursor.fetchall()
     cursor.close()
@@ -29,7 +30,8 @@ def get_user_id_by_email(email):
         return None
 
 def user_table(email):
-    cursor = database.cursor()
+    #cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT * FROM Users WHERE email = %s; """, (email,))
     result = cursor.fetchall()
     cursor.close()
@@ -40,7 +42,7 @@ def user_table(email):
 
 def user_subscriptions(user_id):
     #database = get_connect()
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT Threads_id FROM Users_has_Threads WHERE Users_id = %s""", (user_id,))
     threads = cursor.fetchall()
     cursor.close()
@@ -55,7 +57,7 @@ def user_info(email):
     if result is None:
         return None
 
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT t2.email FROM Users AS t1
                           INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
                           INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
@@ -92,15 +94,15 @@ def information_about_user(user_id, flag):
         return email
 
 def add_user(username, email, name, isAnonymous, about):
-    cursor = database.cursor()
+    cursor = connection.cursor()
     try:
         cursor.execute("""INSERT INTO Users (username, email, name, isAnonymous, about)
                           VALUES (%s, %s, %s, %s, %s);""", (username, email, name, isAnonymous, about))
-        database.commit()
+        connection.commit()
         cursor.close()
         return True
-    except MySQLdb.Error:
-        database.rollback()
+    except IntegrityError:
+        connection.rollback()
         cursor.close()
         return False
 
@@ -114,13 +116,13 @@ def subscribe(follower, followee):
     if followee_id is None:
         return None
 
-    cursor = database.cursor()
+    cursor = connection.cursor()
     try:
         cursor.execute("""INSERT INTO Users_has_Users (Users_id, Users_id1)
                              VALUES (%s, %s);""", (followee_id, follower_id))
-        database.commit()
-    except MySQLdb.Error:
-        database.rollback()
+        connection.commit()
+    except IntegrityError:
+        connection.rollback()
 
     cursor.close()
     return user_info(follower)
@@ -133,20 +135,20 @@ def unsubscribe(follower, followee):
     followee_id = get_user_id_by_email(followee)
     if followee_id is None:
         return None
-    cursor = database.cursor()
+    cursor = connection.cursor()
     try:
         cursor.execute("""DELETE FROM Users_has_Users WHERE
                           users_id = %s AND users_id1 = %s""", (followee_id, follower_id))
-        database.commit()
-    except MySQLdb.Error:
-        database.rollback()
+        connection.commit()
+    except IntegrityError:
+        connection.rollback()
 
     cursor.close()
     return user_info(follower)
 
 def list_followers(limit, order, since_id, email):
     limit = limit_node(limit)
-    cursor = database.cursor()
+    cursor = connection.cursor()
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
@@ -166,7 +168,7 @@ def list_following(limit, order, since_id, email):
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT t2.email FROM Users AS t1
                           INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
                           INNER JOIN Users AS t2 ON t.Users_id = t2.id
@@ -178,16 +180,16 @@ def list_following(limit, order, since_id, email):
     return following
 
 def update(name, about, email):
-    cursor = database.cursor()
+    cursor = connection.cursor()
     user_id = get_user_id_by_email(email)
     if user_id is None:
         return None
     try:
         cursor.execute("""UPDATE Users SET name= %s, about = %s WHERE id= %s""", (name, about, user_id))
-        database.commit()
+        connection.commit()
         result = user_info(email)
-    except MySQLdb.Error:
-        database.rollback()
+    except IntegrityError:
+        connection.rollback()
     cursor.close()
     return result
 
@@ -198,7 +200,7 @@ def thread_created_by_user(email, since, order, limit):
     if user_id is None:
         return None
     #database = get_connect()
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Threads
                       WHERE Users_id = %s {}
                       ORDER BY date {}
@@ -215,7 +217,7 @@ def post_created_by_user(email, since, limit, order):
     if user_id is None:
         return None
     #database = get_connect()
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Posts WHERE Users_id = %s {}
                       ORDER BY date {}
                       {}""".format(since, order, limit), (user_id,))

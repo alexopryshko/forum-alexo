@@ -15,19 +15,6 @@ def success(result):
     answer = {'code': 0, 'response': result}
     return answer
 
-
-def test_required(data, required):
-    for el in required:
-        if el not in data:
-            raise Exception("required element " + el + " not in parameters")
-        if data[el] is not None:
-            try:
-                data[el] = data[el].encode('utf-8')
-            except Exception as e:
-                continue
-    return
-
-
 def user_create(request):
     request_data = json.loads(request.body)
 
@@ -435,12 +422,12 @@ def thread_restore(request):
 
 def thread_subscribe(request):
     request_data = json.loads(request.body)
-
     try:
         email = request_data['user']
         thread_id = request_data['thread']
     except Exception:
         return HttpResponse(json.dumps(error()), content_type='application/json')
+
     if subscribe_to_thread(thread_id, email) is False:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = {'thread': thread_id, 'user': email}

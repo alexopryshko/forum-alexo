@@ -27,8 +27,6 @@ TEMPLATE_DEBUG = True
 
 ALLOWED_HOSTS = []
 
-database = MySQLdb.connect(host="localhost", user="AlexO", passwd="pwd", db="tp_project_forum")
-
 
 # Application definition
 
@@ -61,8 +59,12 @@ WSGI_APPLICATION = 'forum.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'tp_project_forum',
+        'USER': 'AlexO',
+        'PASSWORD': 'pwd',
+        'HOST': '',
+        'PORT': '3306',
     }
 }
 

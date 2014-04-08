@@ -6,7 +6,7 @@ __author__ = 'alexander'
 #db = get_connect()
 
 def get_short_name(id):
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT short_name FROM Forums WHERE id = %s;""", (id,))
     forum = cursor.fetchall()
     cursor.close()
@@ -17,7 +17,7 @@ def get_short_name(id):
 
 
 def get_forum_id(short_name):
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT id FROM Forums WHERE short_name = %s;""", (short_name,))
     forum_id = cursor.fetchall()
     cursor.close()
@@ -27,20 +27,20 @@ def get_forum_id(short_name):
         return None
 
 def add_forum(name, short_name, user_id):
-    cursor = database.cursor()
+    cursor = connection.cursor()
     try:
         cursor.execute("""INSERT INTO Forums (name, short_name, Users_id)
                           VALUE (%s, %s, %s);""", (name, short_name, user_id))
-        database.commit()
+        connection.commit()
         cursor.close()
         return True
-    except MySQLdb.Error:
-        database.rollback()
+    except IntegrityError:
+        connection.rollback()
         cursor.close()
         return False
 
 def forum_table(short_name):
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT * FROM Forums WHERE short_name = %s;""", (short_name,))
     forum = cursor.fetchall()
     cursor.close()
@@ -73,7 +73,7 @@ def list_users(limit, order, since_id, short_name):
     if forum_id is None:
         return None
     #database = get_connect()
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT DISTINCT t4.email FROM Forums AS t1
                       INNER JOIN Threads AS t2 ON t1.id = t2.Forums_id
                       INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
@@ -93,7 +93,7 @@ def list_thread(limit, order, since, short_name):
     if forum_id is None:
         return None
     #database = get_connect()
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT t2.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
                       WHERE t1.id = %s {}
@@ -111,7 +111,7 @@ def list_post(limit, order, since, short_name):
     if forum_id is None:
         return None
     #database = get_connect()
-    cursor = database.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT t3.id FROM Threads AS t2
                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
                       INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
