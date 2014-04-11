@@ -7,7 +7,7 @@ def limit_node(limit):
     return " LIMIT " + limit
 
 def since_node(table, since):
-    if since == "":
+    if since == "''":
         return ""
     return " AND " + table + " > " + since
 

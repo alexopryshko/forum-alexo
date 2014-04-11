@@ -1,27 +1,27 @@
 from thread_db import *
 __author__ = 'alexander'
 
-db = get_connect()
 
 def post_table(post_id):
-    database = get_connect()
-    cursor = database.cursor()
+
+    cursor = connection.cursor()
     cursor.execute("""SELECT id, message, likes, dislikes, points,
                       isApproved, isHighlighted, isEdited, isSpam,
                       isDeleted, date, Threads_id, Users_id, parent
                       FROM Posts WHERE id = %s""", (post_id,))
     post = cursor.fetchall()
     cursor.close()
-    database.close()
+
     if len(post) > 0:
         return post[0]
     else:
         return None
 
 def is_exist(post_id):
-    cursor = db.cursor()
+    cursor = connection.cursor()
     cursor.execute("""SELECT count(*) FROM Posts WHERE id = %s;""", (post_id,))
     count = cursor.fetchall()
+    cursor.close()
     return 1 == count[0][0]
 
 
@@ -73,7 +73,7 @@ def add_post(message,
              thread_id,
              user_id,
              parent):
-    cursor = db.cursor()
+    cursor = connection.cursor()
     try:
         cursor.execute("""INSERT INTO Posts (message, likes, dislikes, points, isApproved,
                           isHighlighted, isEdited, isSpam, isDeleted, date,
@@ -82,53 +82,59 @@ def add_post(message,
                           (message, is_approved, is_highlighted, is_edited, is_spam,
                           is_deleted, date, thread_id, user_id, parent))
         post_id = cursor.execute("""SELECT id FROM Posts""")
-        db.commit()
+        connection.commit()
         cursor.close()
         return post_id
-    except MySQLdb.Error:
-        db.rollback()
+    except IntegrityError:
+        connection.rollback()
+        cursor.close()
         return 0
 
 def mark_flag_is_deleted(post_id, flag):
     if is_exist(post_id):
-        cursor = db.cursor()
+        cursor = connection.cursor()
         try:
             cursor.execute("""UPDATE Posts SET isDeleted = {}, date = date WHERE id = %s""".format(flag), (post_id,))
-            db.commit()
+            connection.commit()
+            cursor.close()
             return True
-        except MySQLdb.Error:
-            db.rollback()
+        except IntegrityError:
+            connection.rollback()
+            cursor.close()
             return False
     else:
         return False
 
 def update_post(post_id, message):
     if is_exist(post_id):
+        cursor = connection.cursor()
         try:
-            cursor = db.cursor()
             cursor.execute("""UPDATE Posts SET message = %s WHERE id = %s;""", (message, post_id))
-            db.commit()
+            connection.commit()
+            cursor.close()
             return True
-        except MySQLdb.Error:
-            db.rollback()
+        except IntegrityError:
+            connection.rollback()
+            cursor.close()
             return False
     else:
         return False
 
 def vote_post(post_id, like, dislike, point):
     if is_exist(post_id):
+        cursor = connection.cursor()
         try:
-            database = get_connect()
-            cursor = database.cursor()
             cursor.execute("""UPDATE Posts SET likes = likes + %s,
                                              dislikes = dislikes + %s,
                                              points = points + %s,
                                              date = date
                                              WHERE id = %s;""", (like, dislike, point, post_id))
-            database.commit()
+            connection.commit()
+            cursor.close()
             return True
-        except MySQLdb.Error:
-            database.rollback()
+        except IntegrityError:
+            cursor.close()
+            connection.rollback()
             return False
     else:
         return False
