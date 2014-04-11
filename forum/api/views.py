@@ -16,18 +16,6 @@ def success(result):
     return answer
 
 
-def test_required(data, required):
-    for el in required:
-        if el not in data:
-            raise Exception("required element " + el + " not in parameters")
-        if data[el] is not None:
-            try:
-                data[el] = data[el].encode('utf-8')
-            except Exception as e:
-                continue
-    return
-
-
 def user_create(request):
     request_data = json.loads(request.body)
 
