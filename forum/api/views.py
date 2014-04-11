@@ -597,10 +597,11 @@ def post_restore(request):
 
 
 def post_update(request):
+    request_data = json.loads(request.body)
     try:
-        post_id = request.POST['post']
-        message = request.POST['message']
-    except MultiValueDictKeyError:
+        post_id = request_data['post']
+        message = request_data['message']
+    except Exception:
         return HttpResponse(json.dumps(error()), content_type='application/json')
 
     if update_post(post_id, message) is True:
