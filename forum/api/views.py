@@ -6,6 +6,14 @@ from django.utils.datastructures import MultiValueDictKeyError
 __author__ = 'alexander'
 
 
+class Test:
+    def __init__(self):
+        pass
+    def TestReturnValue():
+        return 10
+    TestReturnValue = staticmethod(TestReturnValue)
+
+
 def error():
     result = {'code': 1, 'message': 'error'}
     return result
@@ -52,7 +60,8 @@ def user_details(request):
         email = request.GET['user']
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
-    result = user_info(email)
+    #result = user_info(email)
+    result = User.get(details=True, email=email)
     if result is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')

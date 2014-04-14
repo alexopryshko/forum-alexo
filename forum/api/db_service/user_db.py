@@ -5,6 +5,62 @@ from django.db import IntegrityError
 __author__ = 'alexander'
 
 
+class User:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get("id")
+        self.email = kwargs.get("email")
+        self.about = kwargs.get("about")
+        self.name = kwargs.get("name")
+        self.username = kwargs.get("username")
+        self.is_anonymous = kwargs.get("is_anonymous")
+        self.followers = []
+        self.following = []
+        self.subscriptions = []
+
+    def get(details=False, **kwargs):
+        user_id = kwargs.get("id", None)
+        email = kwargs.get("email", None)
+
+        cursor = connection.cursor()
+        if user_id is None:
+            cursor.execute("""SELECT * FROM Users WHERE email = %s; """, (email,))
+        if email is None:
+            cursor.execute("""SELECT * FROM Users WHERE id = %s; """, (user_id,))
+        result = dictfetch(cursor)
+        if result is None:
+            return None
+
+        if details:
+            cursor.execute("""SELECT t2.email FROM Users AS t1
+                              INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
+                              INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
+                              WHERE t1.id = %s AND t1.id != t2.id""", (result['id'],))
+            followers = cursor.fetchall()
+            if len(followers) > 0:
+                followers = followers[0]
+            cursor.execute("""SELECT t2.email FROM Users AS t1
+                                      INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
+                                      INNER JOIN Users AS t2 ON t.Users_id = t2.id
+                                      WHERE t1.id = %s AND t1.id != t2.id""", (result['id'],))
+            following = cursor.fetchall()
+            if len(following) > 0:
+                following = following[0]
+            cursor.execute("""SELECT Threads_id FROM Users_has_Threads WHERE Users_id = %s""", (result['id'],))
+            subscriptions = cursor.fetchall()
+            if len(subscriptions) > 0:
+                subscriptions = subscriptions[0]
+            result['followers'] = followers
+            result['following'] = following
+            result['subscriptions'] = subscriptions
+        else:
+            result = result['email']
+        cursor.close()
+        return result
+
+    get = staticmethod(get)
+
+
+
 def get_user_email_by_id(user_id):
     cursor = connection.cursor()
     cursor.execute("""SELECT email FROM Users WHERE id = %s; """, (user_id,))
