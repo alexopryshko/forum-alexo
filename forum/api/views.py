@@ -23,13 +23,14 @@ def success(result):
     answer = {'code': 0, 'response': result}
     return answer
 
+
 def user_create(request):
     request_data = json.loads(request.body)
 
-    is_anonymous = request_data.get('isAnonymous', False)
-    username = request_data.get('username', None)
-    about = request_data.get('about', None)
-    name = request_data.get('name', None)
+    is_anonymous = request_data.get('isAnonymous', False).encode('utf-8')
+    username = request_data.get('username', None).encode('utf-8')
+    about = request_data.get('about', None).encode('utf-8')
+    name = request_data.get('name', None).encode('utf-8')
     try:
         email = request_data['email'].encode('utf-8')
     except Exception as e:
