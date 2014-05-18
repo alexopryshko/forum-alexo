@@ -3,21 +3,20 @@ __author__ = 'alexander'
 from django.conf.urls import *
 
 urlpatterns = patterns('api.views',
+ (r'user/create/$',              'user_views.user_create'),
+ (r'user/details/$',             'user_views.user_details'),
+ (r'user/follow/$',              'user_views.user_follow'),
+ (r'user/listFollowers/$',       'user_views.user_listFollowers'),
+ (r'user/listFollowing/$',       'user_views.user_listFollowing'),
+ (r'user/listPosts/$',           'user_views.user_listPosts'),
+ (r'user/unfollow/$',            'user_views.user_unfollow'),
+ (r'user/updateProfile/$',       'user_views.user_updateProfile'),
 
- (r'user/create/$',              'user_create'),
- (r'user/details/$',             'user_details'),
- (r'user/follow/$',              'user_follow'),
- (r'user/listFollowers/$',       'user_listFollowers'),
- (r'user/listFollowing/$',       'user_listFollowing'),
- (r'user/listPosts/$',           'user_listPosts'),
- (r'user/unfollow/$',            'user_unfollow'),
- (r'user/updateProfile/$',       'user_updateProfile'),
-
- (r'forum/create/$',             'forum_create'),
- (r'forum/details/$',            'forum_details'),
- (r'forum/listUsers/$',          'forum_listUsers'),
- (r'forum/listThreads/$',        'forum_listThreads'),
- (r'forum/listPosts/$',          'forum_listPosts'),
+ (r'forum/create/$',             'forum_views.forum_create'),
+ (r'forum/details/$',            'forum_views.forum_details'),
+ (r'forum/listUsers/$',          'forum_views.forum_listUsers'),
+ (r'forum/listThreads/$',        'forum_views.forum_listThreads'),
+ (r'forum/listPosts/$',          'forum_views.forum_listPosts'),
 
  (r'thread/create/$',            'thread_create'),
  (r'thread/close/$',             'thread_close'),
@@ -31,7 +30,6 @@ urlpatterns = patterns('api.views',
  (r'thread/unsubscribe/$',       'thread_unsubscribe'),
  (r'thread/update/$',            'thread_update'),
  (r'thread/vote/$',              'thread_vote'),
-
 
  (r'post/create/$',              'post_create'),
  (r'post/details/$',             'post_details'),
