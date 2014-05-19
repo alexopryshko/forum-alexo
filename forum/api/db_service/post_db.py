@@ -1,8 +1,13 @@
-from thread_db import *
+from helper import *
+from django.db import connection
+from django.db import IntegrityError
+from api.db_service.thread_db import Thread
+from api.db_service.user_db import User
+from api.db_service.forum_db import Forum
 __author__ = 'alexander'
 
 
-class Posts:
+class Post:
     def __init__(self, **kwargs):
         self.id = kwargs.get("id")
         self.message = kwargs.get("message")
@@ -61,7 +66,7 @@ class Posts:
         if self.is_deleted is not None:
             query += """isDeleted = {}, """.format(self.is_deleted)
         if self.message is not None:
-            query += """message = {}, """.format(self.message)
+            query += """message = '{}', """.format(self.message)
         if self.likes is not None:
             query += """likes = likes + {}, """.format(self.likes)
         if self.dislikes is not None:
@@ -81,7 +86,7 @@ class Posts:
             return False
 
     @staticmethod
-    def get_inf(post_id, include_user, include_thread, include_forum):
+    def get_inf(post_id, include_user=False, include_thread=False, include_forum=False):
         cursor = connection.cursor()
         cursor.execute("""SELECT id,
                                  message,

@@ -1,5 +1,10 @@
-from forum_db import *
-from api.db_service.post_db import Posts
+from helper import *
+from django.db import connection
+from django.db import IntegrityError
+from api.db_service.user_db import User
+from api.db_service.forum_db import Forum
+
+
 __author__ = 'alexander'
 
 
@@ -46,6 +51,7 @@ class Thread:
                 self.user_id,
                 self.user)
             )
+            self.id = cursor.execute("""SELECT id FROM Threads""")
             connection.commit()
             cursor.close()
             return True
@@ -55,15 +61,15 @@ class Thread:
             return False
 
     def update(self):
-        query = """UPDATE Posts SET """
+        query = """UPDATE Threads SET """
         if self.is_deleted is not None:
             query += """isDeleted = {}, """.format(self.is_deleted)
         if self.is_closed is not None:
             query += """isClosed = {}, """.format(self.is_closed)
         if self.message is not None:
-            query += """message = {}, """.format(self.message)
+            query += """message = '{}', """.format(self.message)
         if self.slug is not None:
-            query += """slug = {}, """.format(self.slug)
+            query += """slug = '{}', """.format(self.slug)
         if self.likes is not None:
             query += """likes = likes + {}, """.format(self.likes)
         if self.dislikes is not None:
@@ -96,17 +102,15 @@ class Thread:
                                  isDeleted,
                                  Threads.date,
                                  Forums_id as forum,
-                                 Users_id as users
+                                 Users_id as user,
+                                 posts
                                 FROM Threads WHERE Threads.id = %s""", (thread_id,))
-        result = dictfetchall(cursor)
+        result = dictfetch(cursor)
         if not result:
             return None
+        result['date'] = result['date'].strftime('%Y-%m-%d %H:%M:%S')
         result['user'] = User.get_inf(include_user, id=result['user'])
-        forum = Forum.get_inf(result['forum'])
-        if include_forum:
-            result['forum'] = forum
-        else:
-            result['forum'] = forum['short_name']
+        result['forum'] = Forum.get_inf(include_forum, id=result['forum'])
         return result
 
     @staticmethod
@@ -122,6 +126,8 @@ class Thread:
                           t1.points,
                           t1.isClosed,
                           t1.isDeleted,
+                          t1.date,
+                          t1.posts,
                           t2.short_name as forum,
                           t1.user
                          FROM Threads as t1
@@ -137,22 +143,25 @@ class Thread:
         if since is not None:
             query += """AND t1.date > '{}' """.format(since)
         query += """ORDER BY t1.date {} """.format(order)
-        if not limit:
+        if limit is not None:
             query += """LIMIT {}""".format(limit)
         cursor = connection.cursor()
         cursor.execute(query, (query_param,))
         result = dictfetchall(cursor)
+        cursor.close()
         for item in result:
             item['date'] = item['date'].strftime('%Y-%m-%d %H:%M:%S')
+        return result
 
     @staticmethod
     def list_posts(thread_id, since, limit, order):
-        result = Posts.list_posts(since, limit, order, thread=thread_id)
+        from api.db_service.post_db import Post
+        result = Post.list_posts(since, limit, order, thread=thread_id)
         return result
 
     @staticmethod
     def subscribe(thread_id, email):
-        user_id = User.get_inf(email)
+        user_id = User.get_inf(email=email)
         if user_id is None:
             return False
         cursor = connection.cursor()
@@ -171,7 +180,7 @@ class Thread:
 
     @staticmethod
     def unsubscribe(thread_id, email):
-        user_id = User.get_inf(email)
+        user_id = User.get_inf(email=email)
         if user_id is None:
             return False
         cursor = connection.cursor()

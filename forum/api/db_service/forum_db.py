@@ -48,9 +48,26 @@ class Forum:
             return False
 
     @staticmethod
-    def get_inf(details=False, **kwargs):
+    def get_inf(details=False, include_user=False, **kwargs):
         forum_id = kwargs.get("id", None)
-        short_name = kwargs.get("short_name", None)
+        short_name = kwargs.get("forum", None)
+        if not details:
+            if short_name is not None:
+                cursor = connection.cursor()
+                cursor.execute("""SELECT id FROM Forums WHERE short_name = %s;""", (short_name,))
+                result = dictfetch(cursor)
+                if not result:
+                    return None
+                return result['id']
+            if forum_id is not None:
+                cursor = connection.cursor()
+                cursor.execute("""SELECT short_name FROM Forums WHERE id = %s;""", (forum_id,))
+                result = dictfetch(cursor)
+                if not result:
+                    return None
+                return result['short_name']
+            else:
+                return None
         forum = Forum(short_name=short_name, id=forum_id)
         if not forum.fetch():
             return None
@@ -60,7 +77,7 @@ class Forum:
             'short_name': forum.short_name,
             'user': {}
         }
-        if details:
+        if include_user:
             result['user'] = User.get_inf(True, id=forum.user)
         else:
             result['user'] = User.get_inf(id=forum.user)
