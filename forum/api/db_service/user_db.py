@@ -59,7 +59,8 @@ class User:
             connection.rollback()
             result = False
         cursor.close()
-        self.fetch()
+        if result:
+            self.fetch()
         return result
 
     @staticmethod
@@ -224,6 +225,8 @@ class User:
         cursor.execute(query, (user_id,))
         followers = dictfetchall(cursor)
         cursor.close()
+        if followers is None:
+            return None
         if followers:
             for item in followers:
                 if item['followers'] is not None:
@@ -285,6 +288,8 @@ class User:
         cursor.execute(query, (user_id,))
         following = dictfetchall(cursor)
         cursor.close()
+        if following is None:
+            return None
         if following:
             for item in following:
                 if item['followers'] is not None:
@@ -334,6 +339,8 @@ class User:
         cursor = connection.cursor()
         cursor.execute(query, (email,))
         posts = dictfetchall(cursor)
+        if posts is None:
+            return None
         if posts:
             for item in posts:
                 item['date'] = item['date'].strftime('%Y-%m-%d %H:%M:%S')

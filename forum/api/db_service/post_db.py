@@ -107,6 +107,8 @@ class Post:
                                  forum
                           FROM Posts WHERE id = %s""", (post_id,))
         result = dictfetch(cursor)
+        if result is None:
+            return None
         if include_forum:
             result['forum'] = Forum.get_inf(True, False, forum=result['forum'])
         if include_thread:
@@ -152,6 +154,8 @@ class Post:
         cursor = connection.cursor()
         cursor.execute(query, (query_param,))
         result = dictfetchall(cursor)
+        if result is None:
+            return None
         for item in result:
             item['date'] = item['date'].strftime('%Y-%m-%d %H:%M:%S')
         return result

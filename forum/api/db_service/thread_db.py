@@ -152,6 +152,8 @@ class Thread:
         cursor = connection.cursor()
         cursor.execute(query, (query_param,))
         result = dictfetchall(cursor)
+        if result is None:
+            return None
         cursor.close()
         for item in result:
             item['date'] = item['date'].strftime('%Y-%m-%d %H:%M:%S')
