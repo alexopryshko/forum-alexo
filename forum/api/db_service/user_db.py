@@ -91,11 +91,7 @@ class User:
                                 LEFT JOIN Users as t2 ON uhu1.Users_id1 = t2.id
 
                                 LEFT JOIN Users_has_Users as uhu2 ON t1.id = uhu2.Users_id1
-                                LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id
-                                GROUP BY t1.id
-                        ) as t1
-                   LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id """
-
+                                LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id """
             if user_id is not None:
                 query += """WHERE t1.id = %s """
                 parameter = user_id
@@ -104,7 +100,10 @@ class User:
                 parameter = email
             else:
                 return None
-            query += """GROUP BY t1.id"""
+            query += """GROUP BY t1.id
+                        ) as t1
+                        LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id """
+
             cursor.execute(query, (parameter,))
             result = dictfetch(cursor)
             cursor.close()
@@ -213,18 +212,15 @@ class User:
 
                                             LEFT JOIN Users_has_Users as uhu2 ON t1.id = uhu2.Users_id1
                                             LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id
-                                            WHERE uhu2.Users_id = %s
-                                            GROUP BY t1.id
-                                ) as t1
-                                LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id """
+                                            WHERE uhu2.Users_id = %s """
         if since_id is not None:
-            query += """WHERE t1.id >= {} """.format(since_id)
-        if order is not None:
-            query += """GROUP BY t1.id ORDER BY t1.name {} """.format(order)
-        else:
-            query += """GROUP BY t1.id ORDER BY t1.name DESC """
+            query += """AND t1.id >= {} """.format(since_id)
+        query += """GROUP BY t1.id ORDER BY t1.name {} """.format(order)
         if limit is not None:
             query += """LIMIT {}""".format(limit)
+        query += """) as t1
+                    LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id
+                    GROUP BY t1.id"""
         cursor.execute(query, (user_id,))
         followers = dictfetchall(cursor)
         cursor.close()
@@ -276,18 +272,16 @@ class User:
 
                                             LEFT JOIN Users_has_Users as uhu2 ON t1.id = uhu2.Users_id1
                                             LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id
-                                            WHERE uhu1.Users_id1 = %s
-                                            GROUP BY t1.id
-                                ) as t1
-                                LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id """
+                                            WHERE uhu1.Users_id1 = %s """
         if since_id is not None:
-            query += """WHERE t1.id >= {} """.format(since_id)
-        if order is not None:
-            query += """GROUP BY t1.id ORDER BY t1.name {} """.format(order)
-        else:
-            query += """GROUP BY t1.id ORDER BY t1.name DESC """
+            query += """AND t1.id >= {} """.format(since_id)
+        query += """GROUP BY t1.id ORDER BY t1.name {} """.format(order)
         if limit is not None:
             query += """LIMIT {}""".format(limit)
+        query += """) as t1
+                    LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id
+                    GROUP BY t1.id"""
+
         cursor.execute(query, (user_id,))
         following = dictfetchall(cursor)
         cursor.close()
@@ -311,12 +305,6 @@ class User:
 
     @staticmethod
     def list_posts(email, since, limit, order):
-        #since = since_node("date", date_handler(since))
-        #limit = limit_node(limit)
-        #user_id = User.get_inf(email)
-        #if user_id is None:
-        #    return None
-
         query = """SELECT t1.date,
                           t1.dislikes,
                           t1.forum,

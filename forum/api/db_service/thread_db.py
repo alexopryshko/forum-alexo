@@ -116,6 +116,7 @@ class Thread:
         result['forum'] = Forum.get_inf(include_forum, id=result['forum'])
         return result
 
+    #todo
     @staticmethod
     def list(since, limit, order, **kwargs):
         users_id = kwargs.get('user')
