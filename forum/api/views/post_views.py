@@ -4,6 +4,7 @@ from api.db_service.user_db import User
 from api.db_service.post_db import Post
 from api.db_service.helper import *
 from django.utils.datastructures import MultiValueDictKeyError
+import string
 
 __author__ = 'alexander'
 
@@ -13,11 +14,11 @@ def post_create(request):
     #request_data = request.POST
 
     parent = request_data.get('parent', None)
-    is_approved = request_data.get('isApproved', 'False') == 'True'
-    is_highlighted = request_data.get('isHighlighted', 'False') == 'True'
-    is_edited = request_data.get('isEdited', 'False') == 'True'
-    is_spam = request_data.get('isSpam', 'False') == 'True'
-    is_deleted = request_data.get('isDeleted', 'False') == 'True'
+    is_approved = string_to_bool(request_data.get('isApproved'))
+    is_highlighted = string_to_bool(request_data.get('isHighlighted'))
+    is_edited = string_to_bool(request_data.get('isEdited'))
+    is_spam = string_to_bool(request_data.get('isSpam'))
+    is_deleted = string_to_bool(request_data.get('isDeleted'))
 
     try:
         date = request_data['date'].encode('utf-8')
@@ -139,8 +140,8 @@ def post_update(request):
 
 
 def post_vote(request):
-    #request_data = json.loads(request.body)
-    request_data = request.POST
+    request_data = json.loads(request.body)
+    #request_data = request.POST
     try:
         post_id = request_data['post']
         vote = request_data['vote']
@@ -148,7 +149,7 @@ def post_vote(request):
         return HttpResponse(json.dumps(error()), content_type='application/json')
     like = 0
     dislike = 0
-    if vote == '1':
+    if int(vote) == 1:
         like = 1
     else:
         dislike = 1

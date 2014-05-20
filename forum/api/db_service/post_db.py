@@ -15,7 +15,7 @@ class Post:
         self.dislikes = kwargs.get("dislikes")
         self.points = kwargs.get("points")
         self.is_approved = kwargs.get("is_approved")
-        self.is_highlighted = kwargs.get("is_approved")
+        self.is_highlighted = kwargs.get("is_highlighted")
         self.is_edited = kwargs.get("is_edited")
         self.is_spam = kwargs.get("is_spam")
         self.is_deleted = kwargs.get("is_deleted")
@@ -57,6 +57,8 @@ class Post:
                 self.parent))
             self.id = cursor.execute("""SELECT id FROM Posts""")
             connection.commit()
+            thread = Thread(posts=1, id=self.thread)
+            thread.update()
         except IntegrityError:
             connection.rollback()
         cursor.close()
@@ -106,9 +108,8 @@ class Post:
                           FROM Posts WHERE id = %s""", (post_id,))
         result = dictfetch(cursor)
         if include_forum:
-            result['forum'] = Forum.get_inf(short_name=result['forum'])
+            result['forum'] = Forum.get_inf(True, False, forum=result['forum'])
         if include_thread:
-            #todo add thread inf
             result['thread'] = Thread.get_inf(result['thread'])
         result['user'] = User.get_inf(include_user, id=result['user'])
         result['date'] = result['date'].strftime('%Y-%m-%d %H:%M:%S')
@@ -145,7 +146,7 @@ class Post:
             return None
         if since is not None:
             query += """AND t1.date > '{}' """.format(since)
-        query += """ORDER BY t1.date """.format(order)
+        query += """ORDER BY t1.date {} """.format(order)
         if limit is not None:
             query += """LIMIT {}""".format(limit)
         cursor = connection.cursor()
@@ -154,157 +155,3 @@ class Post:
         for item in result:
             item['date'] = item['date'].strftime('%Y-%m-%d %H:%M:%S')
         return result
-
-
-
-
-
-# def post_table(post_id):
-#
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT id,
-#                              message,
-#                              likes,
-#                              dislikes,
-#                              points,
-#                              isApproved,
-#                              isHighlighted,
-#                              isEdited,
-#                              isSpam,
-#                              isDeleted,
-#                              date,
-#                              Threads_id,
-#                              Users_id,
-#                              parent
-#                       FROM Posts WHERE id = %s""", (post_id,))
-#     post = cursor.fetchall()
-#     cursor.close()
-#
-#     if len(post) > 0:
-#         return post[0]
-#     else:
-#         return None
-#
-# def is_exist(post_id):
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT count(*) FROM Posts WHERE id = %s;""", (post_id,))
-#     count = cursor.fetchall()
-#     cursor.close()
-#     return 1 == count[0][0]
-#
-#
-# def post_info(post_id, include_user, include_forum, include_thread):
-#     post = post_table(post_id)
-#     if post is None:
-#         return None
-#     result = {'date':          post[10].strftime('%Y-%m-%d %H:%M:%S'),
-#               'dislikes':      post[3],
-#               'forum':         {},
-#               'id':            post[0],
-#               'isApproved':    post[5],
-#               'isDeleted':     post[9],
-#               'isEdited':      post[7],
-#               'isHighlighted': post[6],
-#               'isSpam':        post[8],
-#               'likes':         post[2],
-#               'message':       post[1],
-#               'parent':        post[13],
-#               'points':        post[4],
-#               'thread':        {},
-#               'user':          {},
-#     }
-#     short_name = forum_thread(post[11])
-#     if include_forum is True:
-#         result['forum'] = forum_info(short_name, False)
-#     else:
-#         result['forum'] = short_name
-#
-#     email = get_user_email_by_id(post[12])
-#     if include_user is True:
-#         result['user'] = user_info(email)
-#     else:
-#         result['user'] = email
-#
-#     if include_thread is True:
-#         result['thread'] = thread_info(post[11], short_name, False, False)
-#     else:
-#         result['thread'] = post[11]
-#     return result
-#
-# def add_post(message,
-#              is_approved,
-#              is_highlighted,
-#              is_edited,
-#              is_spam,
-#              is_deleted,
-#              date,
-#              thread_id,
-#              user_id,
-#              parent):
-#     cursor = connection.cursor()
-#     try:
-#         cursor.execute("""INSERT INTO Posts (message, likes, dislikes, points, isApproved,
-#                           isHighlighted, isEdited, isSpam, isDeleted, date,
-#                           Threads_id, Users_id, parent)
-#                           VALUES (%s, 0, 0, 0, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-#                           (message, is_approved, is_highlighted, is_edited, is_spam,
-#                           is_deleted, date, thread_id, user_id, parent))
-#         post_id = cursor.execute("""SELECT id FROM Posts""")
-#         connection.commit()
-#         cursor.close()
-#         return post_id
-#     except IntegrityError:
-#         connection.rollback()
-#         cursor.close()
-#         return 0
-#
-# def mark_flag_is_deleted(post_id, flag):
-#     if is_exist(post_id):
-#         cursor = connection.cursor()
-#         try:
-#             cursor.execute("""UPDATE Posts SET isDeleted = {}, date = date WHERE id = %s""".format(flag), (post_id,))
-#             connection.commit()
-#             cursor.close()
-#             return True
-#         except IntegrityError:
-#             connection.rollback()
-#             cursor.close()
-#             return False
-#     else:
-#         return False
-#
-# def update_post(post_id, message):
-#     if is_exist(post_id):
-#         cursor = connection.cursor()
-#         try:
-#             cursor.execute("""UPDATE Posts SET message = %s WHERE id = %s;""", (message, post_id))
-#             connection.commit()
-#             cursor.close()
-#             return True
-#         except IntegrityError:
-#             connection.rollback()
-#             cursor.close()
-#             return False
-#     else:
-#         return False
-#
-# def vote_post(post_id, like, dislike, point):
-#     if is_exist(post_id):
-#         cursor = connection.cursor()
-#         try:
-#             cursor.execute("""UPDATE Posts SET likes = likes + %s,
-#                                              dislikes = dislikes + %s,
-#                                              points = points + %s,
-#                                              date = date
-#                                              WHERE id = %s;""", (like, dislike, point, post_id))
-#             connection.commit()
-#             cursor.close()
-#             return True
-#         except IntegrityError:
-#             cursor.close()
-#             connection.rollback()
-#             return False
-#     else:
-#         return False
-#
-#

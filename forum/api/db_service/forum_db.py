@@ -94,7 +94,7 @@ class Forum:
                           t1.about,
                           t1.followers,
                           t1.following,
-                          group_concat(t2.id) as subscriptions
+                          group_concat(t2.Threads_id) as subscriptions
                          FROM (
                             SELECT t1.id,
                                    t1.username,
@@ -111,10 +111,10 @@ class Forum:
                               LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id
                               GROUP BY t1.id
                          ) as t1
-                  LEFT JOIN Threads as t2 ON t2.Users_id = t1.id
+                  LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id
                   WHERE t1.id IN (SELECT Users_id FROM Posts WHERE forum = %s) """
         if since_id is not None:
-            query += """ AND t1.id > {} """.format(since_id)
+            query += """ AND t1.id >= {} """.format(since_id)
         query += """GROUP BY t1.id """
         query += """ORDER BY t1.id {} """.format(order)
         if limit is not None:
@@ -142,7 +142,7 @@ class Forum:
 
     @staticmethod
     def list_threads(limit, order, since, short_name, include_user, include_forum):
-        forum = Forum.get_inf(False, short_name=short_name)
+        forum = Forum.get_inf(True, False, forum=short_name)
         if not forum:
             return None
         cursor = connection.cursor()
@@ -156,6 +156,7 @@ class Forum:
                           isClosed,
                           isDeleted,
                           Threads.date,
+                          posts,
                           Forums_id as forum,
                           Users_id as user FROM Threads WHERE Threads.Forums_id = %s """
         if since is not None:
@@ -177,7 +178,7 @@ class Forum:
 
     @staticmethod
     def list_posts(limit, order, since, short_name, include_user, include_forum, include_thread):
-        forum = Forum.get_inf(False, short_name=short_name)
+        forum = Forum.get_inf(True, False, forum=short_name)
         if not forum:
             return None
         cursor = connection.cursor()
@@ -241,39 +242,41 @@ class Forum:
         if not include_forum:
             forum = forum['short_name']
         if include_thread:
-            result = [
-                {
-                    'id': item['id_p'],
-                    'message': item['message_p'],
-                    'likes': item['likes_p'],
-                    'dislikes': item['dislikes_p'],
-                    'points': item['points_p'],
-                    'isApproved': item['isApproved'],
-                    'isHighlighted': item['isHighlighted'],
-                    'isEdited': item['isEdited'],
-                    'isSpam': item['isSpam'],
-                    'isDeleted': item['isDeleted_p'],
-                    'date': item['date_p'].strftime('%Y-%m-%d %H:%M:%S'),
-                    'user': User.get_inf(include_user, id=item['Users_id']),
-                    'thread': {
-                        'id': item['id_t'],
-                        'title': item['title'],
-                        'message': item['message_t'],
-                        'slug': item['slug'],
-                        'likes': item['likes_t'],
-                        'dislikes': item['dislikes_t'],
-                        'points': item['points_t'],
-                        'isClosed': item['isClosed_t'],
-                        'isDeleted': item['isDeleted_t'],
-                        'date': item['date_t'].strftime('%Y-%m-%d %H:%M:%S'),
-                        'user': item['user'],
-                        'forum': forum['short_name'],
-                        'posts': item['posts']
-                    },
-                    'forum': forum,
-                    'parent': item['parent']
+            result = []
+            for item in buf:
+                result.append(
+                    {
+                        'id': item['id_p'],
+                        'message': item['message_p'],
+                        'likes': item['likes_p'],
+                        'dislikes': item['dislikes_p'],
+                        'points': item['points_p'],
+                        'isApproved': item['isApproved'],
+                        'isHighlighted': item['isHighlighted'],
+                        'isEdited': item['isEdited'],
+                        'isSpam': item['isSpam'],
+                        'isDeleted': item['isDeleted_p'],
+                        'date': item['date_p'].strftime('%Y-%m-%d %H:%M:%S'),
+                        'user': User.get_inf(include_user, id=item['Users_id']),
+                        'thread': {
+                            'id': item['id_t'],
+                            'title': item['title'],
+                            'message': item['message_t'],
+                            'slug': item['slug'],
+                            'likes': item['likes_t'],
+                            'dislikes': item['dislikes_t'],
+                            'points': item['points_t'],
+                            'isClosed': item['isClosed_t'],
+                            'isDeleted': item['isDeleted_t'],
+                            'date': item['date_t'].strftime('%Y-%m-%d %H:%M:%S'),
+                            'user': item['user'],
+                            'forum': short_name,
+                            'posts': item['posts']
+                        },
+                        'forum': forum,
+                        'parent': item['parent']
 
-                } for item in buf]
+                    })
             return result
         else:
             for item in buf:
@@ -281,123 +284,3 @@ class Forum:
                 item['user'] = User.get_inf(include_user, id=item['user'])
                 item['forum'] = forum
             return buf
-
-
-# def get_short_name(id):
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT short_name FROM Forums WHERE id = %s;""", (id,))
-#     forum = cursor.fetchall()
-#     cursor.close()
-#     if len(forum) > 0:
-#         return forum[0][0]
-#     else:
-#         return None
-#
-#
-# def get_forum_id(short_name):
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT id FRO Forums WHERE short_name = %s;""", (short_name,))
-#     forum_id = cursor.fetchall()
-#     cursor.close()
-#     if len(forum_id) > 0:
-#         return forum_id[0][0]
-#     else:
-#         return None
-#
-# def add_forum(name, short_name, user_id):
-#     cursor = connection.cursor()
-#     try:
-#         cursor.execute("""INSERT INTO Forums (name, short_name, Users_id)
-#                           VALUE (%s, %s, %s);""", (name, short_name, user_id))
-#         connection.commit()
-#         cursor.close()
-#         return True
-#     except IntegrityError:
-#         connection.rollback()
-#         cursor.close()
-#         return False
-#
-# def forum_table(short_name):
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT * FROM Forums WHERE short_name = %s;""", (short_name,))
-#     forum = cursor.fetchall()
-#     cursor.close()
-#     if len(forum) > 0:
-#         return forum
-#     else:
-#         return None
-#
-# def forum_info(short_name, deployed):
-#     forum = forum_table(short_name)
-#     if forum is None:
-#         return None
-#     email = get_user_email_by_id(forum[0][3])
-#     result = {'id':         forum[0][0],
-#               'name':       forum[0][1],
-#               'short_name': forum[0][2],
-#               'user':       {}
-#     }
-#
-#     if deployed is True:
-#         result['user'] = user_info(email)
-#     else:
-#         result['user'] = email
-#     return result
-#
-# def list_users(limit, order, since_id, short_name):
-#     limit = limit_node(limit)
-#
-#     forum_id = get_forum_id(short_name)
-#     if forum_id is None:
-#         return None
-#
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT DISTINCT t4.email FROM Forums AS t1
-#                       INNER JOIN Threads AS t2 ON t1.id = t2.Forums_id
-#                       INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
-#                       INNER JOIN Users AS t4 ON t3.Users_id = t4.id
-#                       WHERE t1.id = %s AND t4.id > {}
-#                       ORDER BY t4.id {}
-#                       {}""".format(since_id, order, limit), (forum_id,))
-#     result = cursor.fetchall()
-#     cursor.close()
-#
-#     return result
-#
-# def list_thread(limit, order, since, short_name):
-#     limit = limit_node(limit)
-#     since = since_node('t2.date', date_handler(since))
-#     forum_id = get_forum_id(short_name)
-#     if forum_id is None:
-#         return None
-#
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT t2.id FROM Threads AS t2
-#                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
-#                       WHERE t1.id = %s {}
-#                       ORDER BY t2.date {}
-#                       {}""".format(since, order, limit), (forum_id,))
-#     threads = cursor.fetchall()
-#     cursor.close()
-#
-#     return threads
-#
-# def list_post(limit, order, since, short_name):
-#     limit = limit_node(limit)
-#     since = since_node('t3.date', date_handler(since))
-#     forum_id = get_forum_id(short_name)
-#     if forum_id is None:
-#         return None
-#
-#     cursor = connection.cursor()
-#     cursor.execute("""SELECT t3.id FROM Threads AS t2
-#                       INNER JOIN Forums AS t1 ON t1.id = t2.Forums_id
-#                       INNER JOIN Posts AS t3 ON t2.id = t3.Threads_id
-#                       WHERE t1.id = %s {}
-#                       ORDER BY t3.date {}
-#                       {}""".format(since, order, limit), (forum_id,))
-#     posts = cursor.fetchall()
-#     cursor.close()
-#
-#     return posts
-#

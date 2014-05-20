@@ -10,12 +10,12 @@ __author__ = 'alexander'
 
 
 def thread_create(request):
-    #request_data = json.loads(request.body)
-    request_data = request.POST
+    request_data = json.loads(request.body)
+    #request_data = request.POST
 
-    is_deleted = request_data.get('isDeleted', 'False') == 'True' or 'true'
+    is_deleted = string_to_bool(request_data.get('isDeleted'))
     try:
-        is_closed = request_data['isClosed'] == 'True' or 'true'
+        is_closed = string_to_bool(request_data['isClosed'])
         title = request_data['title'].encode('utf-8')
         message = request_data['message'].encode('utf-8')
         short_name = request_data['forum'].encode('utf-8')
@@ -28,7 +28,7 @@ def thread_create(request):
     user_id = User.get_inf(email=email)
     if user_id is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
-    forum_id = Forum.get_inf(short_name=short_name)
+    forum_id = Forum.get_inf(forum=short_name)
     if forum_id is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
 
@@ -213,7 +213,7 @@ def thread_vote(request):
         return HttpResponse(json.dumps(error()), content_type='application/json')
     like = 0
     dislike = 0
-    if vote == '1':
+    if int(vote) == 1:
         like = 1
     else:
         dislike = 1

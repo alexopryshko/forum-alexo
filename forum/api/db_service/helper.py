@@ -33,7 +33,6 @@ def dictfetch(cursor):
     return dict(zip([col[0] for col in desc], row))
 
 
-
 def error():
     result = {'code': 1, 'message': 'error'}
     return result
@@ -42,3 +41,7 @@ def error():
 def success(result):
     answer = {'code': 0, 'response': result}
     return answer
+
+
+def string_to_bool(string):
+    return string in ['True', 'true', True]

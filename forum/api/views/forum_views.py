@@ -40,10 +40,9 @@ def forum_details(request):
     include_user = False
     if 'user' in related:
         include_user = True
-    result = Forum.get_inf(include_user, short_name=short_name)
-    #todo wtf
-    del result['user']['about']
-    del result['user']['username']
+    result = Forum.get_inf(True, include_user, forum=short_name)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 
