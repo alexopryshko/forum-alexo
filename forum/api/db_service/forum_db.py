@@ -86,59 +86,61 @@ class Forum:
     @staticmethod
     def list_users(limit, order, since_id, short_name):
         cursor = connection.cursor()
-        query = """SELECT t1.id,
-                          t1.username,
-                          t1.email,
-                          t1.name,
-                          t1.isAnonymous,
-                          t1.about,
-                          t1.followers,
-                          t1.following,
-                          group_concat(t2.Threads_id) as subscriptions
-                         FROM (
-                            SELECT t1.id,
-                                   t1.username,
-                                   t1.email,
-                                   t1.name,
-                                   t1.isAnonymous,
-                                   t1.about,
-                                   group_concat(distinct t2.email) as followers,
-                                   group_concat(distinct t3.email) as following FROM Users as t1
-                              LEFT JOIN Users_has_Users as uhu1 ON t1.id = uhu1.Users_id
-                              LEFT JOIN Users as t2 ON uhu1.Users_id1 = t2.id
-
-                              LEFT JOIN Users_has_Users as uhu2 ON t1.id = uhu2.Users_id1
-                              LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id
-                              GROUP BY t1.id
-                         ) as t1
-                  LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id
-                  WHERE t1.id IN (SELECT Users_id FROM Posts WHERE forum = %s) """
+        # query = """SELECT t1.id,
+        #                   t1.username,
+        #                   t1.email,
+        #                   t1.name,
+        #                   t1.isAnonymous,
+        #                   t1.about,
+        #                   t1.followers,
+        #                   t1.following,
+        #                   group_concat(t2.Threads_id) as subscriptions
+        #                  FROM (
+        #                     SELECT t1.id,
+        #                            t1.username,
+        #                            t1.email,
+        #                            t1.name,
+        #                            t1.isAnonymous,
+        #                            t1.about,
+        #                            group_concat(distinct t2.email) as followers,
+        #                            group_concat(distinct t3.email) as following FROM Users as t1
+        #                       LEFT JOIN Users_has_Users as uhu1 ON t1.id = uhu1.Users_id
+        #                       LEFT JOIN Users as t2 ON uhu1.Users_id1 = t2.id
+        #
+        #                       LEFT JOIN Users_has_Users as uhu2 ON t1.id = uhu2.Users_id1
+        #                       LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id
+        #                       GROUP BY t1.id
+        #                  ) as t1
+        #           LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id
+        #           WHERE t1.id IN (SELECT Users_id FROM Posts WHERE forum = %s) """
+        query = """SELECT Users_id FROM Posts WHERE forum = %s """
         if since_id is not None:
-            query += """ AND t1.id >= {} """.format(since_id)
-        query += """GROUP BY t1.id """
-        query += """ORDER BY t1.id {} """.format(order)
+            query += """ AND Users_id >= {} """.format(since_id)
+        query += """ORDER BY Users_id {} """.format(order)
         if limit is not None:
             query += """LIMIT {}""".format(limit)
         cursor.execute(query, (short_name,))
         users = dictfetchall(cursor)
         cursor.close()
-        if users:
-            for item in users:
-                if item['followers'] is not None:
-                    item['followers'] = item['followers'].split(',')
-                else:
-                    item['followers'] = []
-
-                if item['following'] is not None:
-                    item['following'] = item['following'].split(',')
-                else:
-                    item['following'] = []
-
-                if item['subscriptions'] is not None:
-                    item['subscriptions'] = [int(item_list) for item_list in item['subscriptions'].split(',')]
-                else:
-                    item['subscriptions'] = []
-        return users
+        result = [User.get_inf(True, id=user['Users_id']) for user in users]
+        # if users:
+        #     for item in users:
+        #         if item['followers'] is not None:
+        #             item['followers'] = item['followers'].split(',')
+        #         else:
+        #             item['followers'] = []
+        #
+        #         if item['following'] is not None:
+        #             item['following'] = item['following'].split(',')
+        #         else:
+        #             item['following'] = []
+        #
+        #         if item['subscriptions'] is not None:
+        #             item['subscriptions'] = [int(item_list) for item_list in item['subscriptions'].split(',')]
+        #         else:
+        #             item['subscriptions'] = []
+        # return users
+        return result
 
     @staticmethod
     def list_threads(limit, order, since, short_name, include_user, include_forum):
