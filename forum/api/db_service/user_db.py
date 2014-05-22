@@ -36,16 +36,37 @@ class User:
         self.fetch()
 
     def fetch(self):
-        cursor = connection.cursor()
-        cursor.execute("""SELECT * FROM Users WHERE email = %s; """, (self.email,))
+        if self.id is not None:
+            cursor = connection.cursor()
+            cursor.execute("""SELECT t1.id,
+                                     t1.username,
+                                     t1.email,
+                                     t1.name,
+                                     t1.isAnonymous,
+                                     t1.about
+                                    FROM Users as t1 WHERE t1.id = %s; """, (self.id,))
+        elif self.email is not None:
+            cursor = connection.cursor()
+            cursor.execute("""SELECT t1.id,
+                                     t1.username,
+                                     t1.email,
+                                     t1.name,
+                                     t1.isAnonymous,
+                                     t1.about
+                                    FROM Users as t1 WHERE t1.email = %s; """, (self.email,))
+        else:
+            return False
         result = dictfetch(cursor)
+        cursor.close()
+        if not result:
+            return False
         self.id = result.get("id")
         self.email = result.get("email")
         self.about = result.get("about")
         self.name = result.get("name")
         self.username = result.get("username")
         self.is_anonymous = result.get("isAnonymous")
-        cursor.close()
+        return True
 
     def update(self):
         cursor = connection.cursor()
@@ -69,63 +90,40 @@ class User:
         email = kwargs.get("email", None)
         cursor = connection.cursor()
         if details:
-            query = """SELECT  t1.id,
-                           t1.username,
-                           t1.email,
-                           t1.name,
-                           t1.isAnonymous,
-                           t1.about,
-                           t1.followers,
-                           t1.following,
-                           group_concat(t2.Threads_id) as subscriptions
-                        FROM (
-                                SELECT  t1.id,
-                                        t1.username,
-                                        t1.email,
-                                        t1.name,
-                                        t1.isAnonymous,
-                                        t1.about,
-                                        group_concat(distinct t2.email) as followers,
-                                        group_concat(distinct t3.email) as following
-                                FROM Users as t1
-                                LEFT JOIN Users_has_Users as uhu1 ON t1.id = uhu1.Users_id
-                                LEFT JOIN Users as t2 ON uhu1.Users_id1 = t2.id
-
-                                LEFT JOIN Users_has_Users as uhu2 ON t1.id = uhu2.Users_id1
-                                LEFT JOIN Users as t3 ON uhu2.Users_id = t3.id """
-            if user_id is not None:
-                query += """WHERE t1.id = %s """
-                parameter = user_id
-            elif email is not None:
-                query += """WHERE t1.email = %s """
-                parameter = email
-            else:
+            user = User(id=user_id, email=email)
+            if not user.fetch():
                 return None
-            query += """GROUP BY t1.id
-                        ) as t1
-                        LEFT JOIN Users_has_Threads as t2 ON t2.Users_id = t1.id """
+            query = """SELECT t2.email FROM Users AS t1
+                       INNER JOIN Users_has_Users AS t ON t.Users_id = t1.id
+                       INNER JOIN Users AS t2 ON t.Users_id1 = t2.id
+                       WHERE t1.id = %s AND t1.id != t2.id"""
+            cursor.execute(query, (user.id,))
+            buf = cursor.fetchall()
+            followers = [item[0] for item in buf]
+            query = """SELECT t2.email FROM Users AS t1
+                       INNER JOIN Users_has_Users AS t ON t.Users_id1 = t1.id
+                       INNER JOIN Users AS t2 ON t.Users_id = t2.id
+                       WHERE t1.id = %s AND t1.id != t2.id"""
+            cursor.execute(query, (user.id,))
+            buf = cursor.fetchall()
+            following = [item[0] for item in buf]
+            query = """SELECT Threads_id FROM Users_has_Threads WHERE Users_id = %s;"""
+            cursor.execute(query, (user.id,))
+            buf = cursor.fetchall()
+            subscriptions = [item[0] for item in buf]
+            result = {
+                'about': user.about,
+                'email': user.email,
+                'id': user.id,
+                'isAnonymous': user.is_anonymous,
+                'name': user.name,
+                'username': user.username,
+                'followers': followers,
+                'following': following,
+                'subscriptions': subscriptions
+            }
+            return result
 
-            cursor.execute(query, (parameter,))
-            result = dictfetch(cursor)
-            cursor.close()
-            if result:
-                if result['followers'] is not None:
-                    result['followers'] = result['followers'].split(',')
-                else:
-                    result['followers'] = []
-
-                if result['following'] is not None:
-                    result['following'] = result['following'].split(',')
-                else:
-                    result['following'] = []
-
-                if result['subscriptions'] is not None:
-                    result['subscriptions'] = [int(item) for item in result['subscriptions'].split(',')]
-                else:
-                    result['subscriptions'] = []
-                return result
-            else:
-                return None
         else:
             if email is not None:
                 cursor.execute("""SELECT id FROM Users WHERE email = %s; """, (email,))
@@ -182,7 +180,6 @@ class User:
         cursor.close()
         return User.get_inf(True, id=follower_id)
 
-    #todo: optimize
     @staticmethod
     def list_followers(limit, order, since_id, email):
         user_id = User.get_inf(email=email)
