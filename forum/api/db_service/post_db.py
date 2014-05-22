@@ -107,7 +107,7 @@ class Post:
                                  forum
                           FROM Posts WHERE id = %s""", (post_id,))
         result = dictfetch(cursor)
-        if result is None:
+        if not result:
             return None
         if include_forum:
             result['forum'] = Forum.get_inf(True, False, forum=result['forum'])

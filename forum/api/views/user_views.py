@@ -54,7 +54,7 @@ def user_follow(request):
     if follower == followee:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = User.follow(follower, followee)
-    if not result:
+    if result is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
@@ -70,7 +70,7 @@ def user_unfollow(request):
     if follower == followee:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = User.unfollow(follower, followee)
-    if not result:
+    if result is None:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
@@ -84,8 +84,8 @@ def user_listFollowers(request):
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = User.list_followers(limit, order, since_id, email)
-    #if not result:
-    #    return HttpResponse(json.dumps(error()), content_type='application/json')
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 
@@ -98,8 +98,8 @@ def user_listFollowing(request):
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = User.list_following(limit, order, since_id, email)
-    #if not result:
-    #    return HttpResponse(json.dumps(error()), content_type='application/json')
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 
@@ -112,8 +112,8 @@ def user_listPosts(request):
     except MultiValueDictKeyError:
         return HttpResponse(json.dumps(error()), content_type='application/json')
     result = User.list_posts(email, since, limit, order)
-    #if not posts:
-    #    return HttpResponse(json.dumps(error()), content_type='application/json')
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 

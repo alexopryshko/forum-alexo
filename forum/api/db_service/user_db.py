@@ -307,6 +307,9 @@ class User:
 
     @staticmethod
     def list_posts(email, since, limit, order):
+        user_id = User.get_inf(email=email)
+        if user_id is None:
+            return None
         query = """SELECT t1.date,
                           t1.dislikes,
                           t1.forum,
@@ -324,7 +327,7 @@ class User:
                           t2.email as user
                          FROM Posts as t1
                          INNER JOIN Users as t2 ON t2.id = t1.Users_id
-                         WHERE t2.email = %s """
+                         WHERE t2.id = %s """
         if since is not None:
             query += """AND t1.date > '{}' """.format(since)
         if order is not None:
@@ -334,12 +337,9 @@ class User:
         if limit is not None:
             query += """LIMIT {}""".format(limit)
         cursor = connection.cursor()
-        cursor.execute(query, (email,))
+        cursor.execute(query, (user_id,))
         posts = dictfetchall(cursor)
-        if posts is None:
-            return None
-        if posts:
-            for item in posts:
-                item['date'] = item['date'].strftime('%Y-%m-%d %H:%M:%S')
+        for item in posts:
+            item['date'] = item['date'].strftime('%Y-%m-%d %H:%M:%S')
         cursor.close()
         return posts

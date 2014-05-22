@@ -85,6 +85,8 @@ def thread_details(request):
     if 'forum' in related:
         include_forum = True
     result = Thread.get_inf(thread_id, include_user, include_forum)
+    if result is None:
+        return HttpResponse(json.dumps(error()), content_type='application/json')
     return HttpResponse(json.dumps(success(result)), content_type='application/json')
 
 
@@ -97,6 +99,8 @@ def thread_list(request):
 
     if email is not None:
         user_id = User.get_inf(email=email)
+        if user_id is None:
+            return HttpResponse(json.dumps(error()), content_type='application/json')
         result = Thread.list(since, limit, order, user=user_id)
         return HttpResponse(json.dumps(success(result)), content_type='application/json')
     elif short_name is not None:
